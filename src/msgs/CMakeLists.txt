@@ -13,6 +13,10 @@ find_package(std_msgs REQUIRED)                # <-- 기본 메시지 타입을 
 # 2. 메시지 인터페이스 생성
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/LineResult.msg"
+  "msg/BallResult.msg"
+  "msg/HurdleResult.msg"
+  "msg/MotionEnd.msg"
+  "msg/MotionCommand.msg"
   DEPENDENCIES std_msgs                          # <-- 의존성 명시
 )
 

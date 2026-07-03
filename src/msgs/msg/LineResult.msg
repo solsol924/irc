@@ -1,2 +1,3 @@
 uint8 status
-uint8 angle
+uint32 angle
+bool follow_point
