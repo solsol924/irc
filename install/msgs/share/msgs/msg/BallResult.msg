@@ -1,3 +1,1 @@
-uint8 status
-uint32 angle
-bool ball_in_hand
+/home/solhee/irc/src/msgs/msg/BallResult.msg

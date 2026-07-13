@@ -1,0 +1,30 @@
+[0.141s] Invoking command in '/home/solhee/irc/build/motion': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble PS1=\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ /usr/bin/cmake /home/solhee/irc/src/motion -DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/motion
+[0.147s] -- Found rclcpp: 16.0.18 (/opt/ros/humble/share/rclcpp/cmake)
+[0.249s] -- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[0.250s] -- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[0.254s] -- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[0.260s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[0.267s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[0.287s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[0.288s] -- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[0.352s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[0.388s] [31mCMake Error at CMakeLists.txt:11 (find_package):
+[0.388s]   By not providing "Finddynamixel_sdk.cmake" in CMAKE_MODULE_PATH this
+[0.388s]   project has asked CMake to find a package configuration file provided by
+[0.388s]   "dynamixel_sdk", but CMake did not find one.
+[0.388s] 
+[0.388s]   Could not find a package configuration file provided by "dynamixel_sdk"
+[0.389s]   with any of the following names:
+[0.389s] 
+[0.389s]     dynamixel_sdkConfig.cmake
+[0.389s]     dynamixel_sdk-config.cmake
+[0.389s] 
+[0.389s]   Add the installation prefix of "dynamixel_sdk" to CMAKE_PREFIX_PATH or set
+[0.389s]   "dynamixel_sdk_DIR" to a directory containing one of the above files.  If
+[0.389s]   "dynamixel_sdk" provides a separate development package or SDK, be sure it
+[0.389s]   has been installed.
+[0.389s] 
+[0.389s] [0m
+[0.389s] -- Configuring incomplete, errors occurred!
+[0.389s] See also "/home/solhee/irc/build/motion/CMakeFiles/CMakeOutput.log".
+[0.395s] Invoked command in '/home/solhee/irc/build/motion' returned '1': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble PS1=\[\e]0;\u@\h: \w\a\]${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ /usr/bin/cmake /home/solhee/irc/src/motion -DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/motion

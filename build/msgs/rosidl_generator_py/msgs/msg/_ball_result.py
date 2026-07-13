@@ -7,6 +7,8 @@
 
 import builtins  # noqa: E402, I100
 
+import math  # noqa: E402, I100
+
 import rosidl_parser.definition  # noqa: E402, I100
 
 
@@ -62,13 +64,13 @@ class BallResult(metaclass=Metaclass_BallResult):
 
     _fields_and_field_types = {
         'status': 'uint8',
-        'angle': 'uint32',
+        'angle': 'float',
         'ball_in_hand': 'boolean',
     }
 
     SLOT_TYPES = (
         rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
-        rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
+        rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('boolean'),  # noqa: E501
     )
 
@@ -77,7 +79,7 @@ class BallResult(metaclass=Metaclass_BallResult):
             'Invalid arguments passed to constructor: %s' % \
             ', '.join(sorted(k for k in kwargs.keys() if '_' + k not in self.__slots__))
         self.status = kwargs.get('status', int())
-        self.angle = kwargs.get('angle', int())
+        self.angle = kwargs.get('angle', float())
         self.ball_in_hand = kwargs.get('ball_in_hand', bool())
 
     def __repr__(self):
@@ -146,10 +148,10 @@ class BallResult(metaclass=Metaclass_BallResult):
     def angle(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'angle' field must be of type 'int'"
-            assert value >= 0 and value < 4294967296, \
-                "The 'angle' field must be an unsigned integer in [0, 4294967295]"
+                isinstance(value, float), \
+                "The 'angle' field must be of type 'float'"
+            assert not (value < -3.402823466e+38 or value > 3.402823466e+38) or math.isinf(value), \
+                "The 'angle' field must be a float in [-3.402823466e+38, 3.402823466e+38]"
         self._angle = value
 
     @builtins.property

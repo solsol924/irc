@@ -1,0 +1,4 @@
+Invoking command in '/home/solhee/irc/build/msgs': /usr/bin/cmake --build /home/solhee/irc/build/msgs -- -j12 -l12
+Invoked command in '/home/solhee/irc/build/msgs' returned '0': /usr/bin/cmake --build /home/solhee/irc/build/msgs -- -j12 -l12
+Invoking command in '/home/solhee/irc/build/msgs': /usr/bin/cmake --install /home/solhee/irc/build/msgs
+Invoked command in '/home/solhee/irc/build/msgs' returned '0': /usr/bin/cmake --install /home/solhee/irc/build/msgs

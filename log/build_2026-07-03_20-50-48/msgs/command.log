@@ -1,4 +1,0 @@
-Invoking command in '/home/pyy/irc/build/msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/pyy/irc/install/decision:/home/pyy/ros2_ws/install/my_python_pkg:/opt/ros/humble /usr/bin/cmake --build /home/pyy/irc/build/msgs -- -j8 -l8
-Invoked command in '/home/pyy/irc/build/msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/pyy/irc/install/decision:/home/pyy/ros2_ws/install/my_python_pkg:/opt/ros/humble /usr/bin/cmake --build /home/pyy/irc/build/msgs -- -j8 -l8
-Invoking command in '/home/pyy/irc/build/msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/pyy/irc/install/decision:/home/pyy/ros2_ws/install/my_python_pkg:/opt/ros/humble /usr/bin/cmake --install /home/pyy/irc/build/msgs
-Invoked command in '/home/pyy/irc/build/msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/pyy/irc/install/decision:/home/pyy/ros2_ws/install/my_python_pkg:/opt/ros/humble /usr/bin/cmake --install /home/pyy/irc/build/msgs

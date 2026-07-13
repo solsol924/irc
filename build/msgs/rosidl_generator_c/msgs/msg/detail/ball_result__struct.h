@@ -21,7 +21,7 @@ extern "C"
 typedef struct msgs__msg__BallResult
 {
   uint8_t status;
-  uint32_t angle;
+  float angle;
   bool ball_in_hand;
 } msgs__msg__BallResult;
 

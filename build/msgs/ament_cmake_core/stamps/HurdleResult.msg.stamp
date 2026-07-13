@@ -1,2 +1,2 @@
 uint8 status
-uint32 angle
+float32 angle

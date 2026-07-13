@@ -10,6 +10,12 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
+    vision_config = os.path.join(
+        get_package_share_directory('vision'),
+        'config',
+        'settings.ini',
+    )
+
     # 실행 여부를 터미널에서 켜고 끌 수 있는 옵션
     # 예: ros2 launch robot_bringup robot_bringup.py use_webcam:=false
     use_realsense = LaunchConfiguration('use_realsense')
@@ -98,6 +104,10 @@ def generate_launch_description():
                 name='webcam',
                 output='screen',
                 emulate_tty=True,
+                # USB 연결이 순간적으로 끊겨 usb_cam이 종료되면 자동 재시작한다.
+                # 카메라가 다시 연결될 때까지 2초 간격으로 재시도한다.
+                respawn=True,
+                respawn_delay=2.0,
                 parameters=[
                     {
                         'video_device': '/dev/video0',  # TODO: webcam 장치 번호 확인 후 수정
@@ -117,46 +127,52 @@ def generate_launch_description():
     )
 
     # 4. Vision 패키지 노드들
-    # TODO: vision 패키지 안에서 만든 실제 노드 이름으로 package/executable을 수정하세요.
     vision_nodes = TimerAction(
         period=4.0,
         actions=[
             Node(
                 condition=IfCondition(use_vision),
-                package='vision',            # TODO: 실제 vision 패키지명
-                executable='line_vision',     # TODO: line result 발행 노드 실행파일명
-                name='line_vision',
+                package='vision',
+                executable='yolo_detector.py',
+                name='yolo_vision',
                 output='screen',
                 emulate_tty=True,
                 remappings=[
-                    ('image', '/camera/camera/color/image_raw'),  # TODO: RealSense/Webcam 입력 토픽에 맞게 수정
+                    ('/camera/image_raw', '/webcam/image_raw'),
                     ('line_result', '/line_result'),
                 ],
-                arguments=['--ros-args', '--log-level', 'info'],
+                arguments=[
+                    vision_config,
+                    '--ros2',
+                    '--ros-args', '--log-level', 'info',
+                ],
             ),
             Node(
                 condition=IfCondition(use_vision),
-                package='vision',            # TODO: 실제 vision 패키지명
-                executable='ball_vision',     # TODO: ball result 발행 노드 실행파일명
-                name='ball_vision',
+                package='vision',
+                executable='realsense_ball_detector.py',
+                name='basketball_detector',
                 output='screen',
                 emulate_tty=True,
                 remappings=[
-                    ('image', '/webcam/image_raw'),  # TODO: 공 인식에 쓰는 카메라 토픽으로 수정
-                    ('ball_result', '/ball_result'),
+                    ('/camera/color/image_raw', '/camera/camera/color/image_raw'),
+                    (
+                        '/camera/aligned_depth_to_color/image_raw',
+                        '/camera/camera/aligned_depth_to_color/image_raw',
+                    ),
                 ],
                 arguments=['--ros-args', '--log-level', 'info'],
             ),
             Node(
                 condition=IfCondition(use_vision),
-                package='vision',             # TODO: 실제 vision 패키지명
-                executable='hurdle_vision',    # TODO: hurdle result 발행 노드 실행파일명
-                name='hurdle_vision',
+                package='vision',
+                executable='ball_vision_fusion.py',
+                name='ball_vision_fusion',
                 output='screen',
                 emulate_tty=True,
                 remappings=[
-                    ('image', '/camera/camera/color/image_raw'),  # TODO: 장애물 인식 입력 토픽으로 수정
-                    ('hurdle_result', '/hurdle_result'),
+                    ('/basketball/position', '/basketball/position'),
+                    ('/line_tracker/state', '/line_tracker/state'),
                 ],
                 arguments=['--ros-args', '--log-level', 'info'],
             ),

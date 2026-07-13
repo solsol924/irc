@@ -40,7 +40,7 @@ struct HurdleResult_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->status = 0;
-      this->angle = 0ul;
+      this->angle = 0.0f;
     }
   }
 
@@ -51,7 +51,7 @@ struct HurdleResult_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->status = 0;
-      this->angle = 0ul;
+      this->angle = 0.0f;
     }
   }
 
@@ -60,7 +60,7 @@ struct HurdleResult_
     uint8_t;
   _status_type status;
   using _angle_type =
-    uint32_t;
+    float;
   _angle_type angle;
 
   // setters for named parameter idiom
@@ -71,7 +71,7 @@ struct HurdleResult_
     return *this;
   }
   Type & set__angle(
-    const uint32_t & _arg)
+    const float & _arg)
   {
     this->angle = _arg;
     return *this;

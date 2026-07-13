@@ -40,7 +40,7 @@ struct LineResult_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->status = 0;
-      this->angle = 0ul;
+      this->angle = 0.0f;
       this->follow_point = false;
     }
   }
@@ -52,7 +52,7 @@ struct LineResult_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->status = 0;
-      this->angle = 0ul;
+      this->angle = 0.0f;
       this->follow_point = false;
     }
   }
@@ -62,7 +62,7 @@ struct LineResult_
     uint8_t;
   _status_type status;
   using _angle_type =
-    uint32_t;
+    float;
   _angle_type angle;
   using _follow_point_type =
     bool;
@@ -76,7 +76,7 @@ struct LineResult_
     return *this;
   }
   Type & set__angle(
-    const uint32_t & _arg)
+    const float & _arg)
   {
     this->angle = _arg;
     return *this;

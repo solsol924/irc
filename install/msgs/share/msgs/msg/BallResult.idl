@@ -1,16 +1,1 @@
-// generated from rosidl_adapter/resource/msg.idl.em
-// with input from msgs/msg/BallResult.msg
-// generated code does not contain a copyright notice
-
-
-module msgs {
-  module msg {
-    struct BallResult {
-      uint8 status;
-
-      uint32 angle;
-
-      boolean ball_in_hand;
-    };
-  };
-};
+/home/solhee/irc/build/msgs/rosidl_adapter/msgs/msg/BallResult.idl

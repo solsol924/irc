@@ -1,0 +1,613 @@
+[0.000000] (-) TimerEvent: {}
+[0.000040] (-) JobUnselected: {'identifier': 'decision'}
+[0.000080] (-) JobUnselected: {'identifier': 'motion'}
+[0.000160] (msgs) JobQueued: {'identifier': 'msgs', 'dependencies': OrderedDict()}
+[0.000296] (vision) JobQueued: {'identifier': 'vision', 'dependencies': OrderedDict([('msgs', '/home/solhee/irc/install/msgs')])}
+[0.000308] (robot_bringup) JobQueued: {'identifier': 'robot_bringup', 'dependencies': OrderedDict([('decision', '/home/solhee/irc/install/decision'), ('motion', '/home/solhee/irc/install/motion'), ('msgs', '/home/solhee/irc/install/msgs'), ('vision', '/home/solhee/irc/install/vision')])}
+[0.000321] (msgs) JobStarted: {'identifier': 'msgs'}
+[0.005593] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'cmake'}
+[0.005993] (msgs) Command: {'cmd': ['/usr/bin/cmake', '/home/solhee/irc/src/msgs', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/msgs'], 'cwd': '/home/solhee/irc/build/msgs', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/msgs'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/msgs:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[0.014033] (msgs) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.098924] (msgs) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[0.099835] (-) TimerEvent: {}
+[0.102848] (msgs) StdoutLine: {'line': b'-- Found rosidl_default_generators: 1.2.0 (/opt/ros/humble/share/rosidl_default_generators/cmake)\n'}
+[0.104484] (msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.106017] (msgs) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[0.124094] (msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[0.138347] (msgs) StdoutLine: {'line': b'-- Found std_msgs: 4.9.1 (/opt/ros/humble/share/std_msgs/cmake)\n'}
+[0.199996] (-) TimerEvent: {}
+[0.300154] (-) TimerEvent: {}
+[0.360765] (msgs) StdoutLine: {'line': b'-- Found ament_cmake_ros: 0.10.0 (/opt/ros/humble/share/ament_cmake_ros/cmake)\n'}
+[0.400263] (-) TimerEvent: {}
+[0.500483] (-) TimerEvent: {}
+[0.504335] (msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[0.600652] (-) TimerEvent: {}
+[0.695766] (msgs) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[0.700718] (-) TimerEvent: {}
+[0.710840] (msgs) StdoutLine: {'line': b'-- Found python_cmake_module: 0.10.0 (/opt/ros/humble/share/python_cmake_module/cmake)\n'}
+[0.726216] (msgs) StdoutLine: {'line': b'-- Using PYTHON_EXECUTABLE: /usr/bin/python3\n'}
+[0.726321] (msgs) StdoutLine: {'line': b'-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.10\n'}
+[0.726357] (msgs) StdoutLine: {'line': b'-- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.10.so\n'}
+[0.745640] (msgs) StdoutLine: {'line': b'-- Found ament_lint_auto: 0.12.15 (/opt/ros/humble/share/ament_lint_auto/cmake)\n'}
+[0.750940] (msgs) StdoutLine: {'line': b"-- Added test 'lint_cmake' to check CMake code style\n"}
+[0.751289] (msgs) StdoutLine: {'line': b"-- Added test 'xmllint' to check XML markup files\n"}
+[0.752614] (msgs) StdoutLine: {'line': b'-- Configuring done\n'}
+[0.774253] (msgs) StdoutLine: {'line': b'-- Generating done\n'}
+[0.781546] (msgs) StdoutLine: {'line': b'-- Build files have been written to: /home/solhee/irc/build/msgs\n'}
+[0.785717] (msgs) CommandEnded: {'returncode': 0}
+[0.786121] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'build'}
+[0.786547] (msgs) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/solhee/irc/build/msgs', '--', '-j12', '-l12'], 'cwd': '/home/solhee/irc/build/msgs', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/msgs'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/msgs:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[0.800815] (-) TimerEvent: {}
+[0.814331] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_generator_c\n'}
+[0.820823] (msgs) StdoutLine: {'line': b'[  1%] Built target msgs__cpp\n'}
+[0.823598] (msgs) StdoutLine: {'line': b'[ 12%] Built target msgs__rosidl_generator_c\n'}
+[0.827755] (msgs) StdoutLine: {'line': b'[ 12%] Built target ament_cmake_python_symlink_msgs\n'}
+[0.833300] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_cpp\n'}
+[0.833440] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_c\n'}
+[0.833504] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_cpp\n'}
+[0.835116] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_cpp\n'}
+[0.835278] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_c\n'}
+[0.836424] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_c\n'}
+[0.840659] (msgs) StdoutLine: {'line': b'[ 23%] Built target msgs__rosidl_typesupport_c\n'}
+[0.842520] (msgs) StdoutLine: {'line': b'[ 44%] Built target msgs__rosidl_typesupport_cpp\n'}
+[0.842654] (msgs) StdoutLine: {'line': b'[ 46%] Built target msgs__rosidl_typesupport_introspection_c\n'}
+[0.842985] (msgs) StdoutLine: {'line': b'[ 57%] Built target msgs__rosidl_typesupport_fastrtps_cpp\n'}
+[0.843173] (msgs) StdoutLine: {'line': b'[ 68%] Built target msgs__rosidl_typesupport_introspection_cpp\n'}
+[0.845853] (msgs) StdoutLine: {'line': b'[ 79%] Built target msgs__rosidl_typesupport_fastrtps_c\n'}
+[0.857953] (msgs) StdoutLine: {'line': b'[ 79%] Built target msgs\n'}
+[0.870615] (msgs) StdoutLine: {'line': b'[ 80%] Built target msgs__py\n'}
+[0.879755] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_generator_py\n'}
+[0.887134] (msgs) StdoutLine: {'line': b'[ 90%] Built target msgs__rosidl_generator_py\n'}
+[0.894714] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_c__pyext\n'}
+[0.894854] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_c__pyext\n'}
+[0.894918] (msgs) StdoutLine: {'line': b'Consolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_c__pyext\n'}
+[0.900895] (-) TimerEvent: {}
+[0.901696] (msgs) StdoutLine: {'line': b'[ 98%] Built target msgs__rosidl_typesupport_c__pyext\n'}
+[0.901818] (msgs) StdoutLine: {'line': b'[ 98%] Built target msgs__rosidl_typesupport_fastrtps_c__pyext\n'}
+[0.901877] (msgs) StdoutLine: {'line': b'[100%] Built target msgs__rosidl_typesupport_introspection_c__pyext\n'}
+[0.984919] (msgs) StdoutLine: {'line': b'running egg_info\n'}
+[0.995511] (msgs) StdoutLine: {'line': b'writing msgs.egg-info/PKG-INFO\n'}
+[0.995803] (msgs) StdoutLine: {'line': b'writing dependency_links to msgs.egg-info/dependency_links.txt\n'}
+[0.996000] (msgs) StdoutLine: {'line': b'writing top-level names to msgs.egg-info/top_level.txt\n'}
+[1.000959] (-) TimerEvent: {}
+[1.025013] (msgs) StdoutLine: {'line': b"reading manifest file 'msgs.egg-info/SOURCES.txt'\n"}
+[1.025816] (msgs) StdoutLine: {'line': b"writing manifest file 'msgs.egg-info/SOURCES.txt'\n"}
+[1.043103] (msgs) StdoutLine: {'line': b'[100%] Built target ament_cmake_python_build_msgs_egg\n'}
+[1.049876] (msgs) CommandEnded: {'returncode': 0}
+[1.050355] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'install'}
+[1.055221] (msgs) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/solhee/irc/build/msgs'], 'cwd': '/home/solhee/irc/build/msgs', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/msgs'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/msgs:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[1.060219] (msgs) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[1.060593] (msgs) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[1.060689] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/rosidl_interfaces/msgs\n'}
+[1.060994] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/ball_result.h\n'}
+[1.061056] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__functions.h\n'}
+[1.061110] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__struct.h\n'}
+[1.061162] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__type_support.h\n'}
+[1.061214] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__functions.h\n'}
+[1.061265] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__struct.h\n'}
+[1.061321] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__type_support.h\n'}
+[1.061353] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__functions.h\n'}
+[1.061410] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__struct.h\n'}
+[1.061439] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__type_support.h\n'}
+[1.061510] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__functions.h\n'}
+[1.061540] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__struct.h\n'}
+[1.061658] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__type_support.h\n'}
+[1.061785] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__functions.h\n'}
+[1.061865] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__struct.h\n'}
+[1.061945] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__type_support.h\n'}
+[1.062021] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/hurdle_result.h\n'}
+[1.062071] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/line_result.h\n'}
+[1.062147] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_command.h\n'}
+[1.062222] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_end.h\n'}
+[1.062272] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_generator_c__visibility_control.h\n'}
+[1.062351] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/library_path.sh\n'}
+[1.062453] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/library_path.dsv\n'}
+[1.062774] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_fastrtps_c.h\n'}
+[1.062875] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_fastrtps_c.h\n'}
+[1.062954] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_fastrtps_c.h\n'}
+[1.063037] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_fastrtps_c.h\n'}
+[1.063117] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_fastrtps_c.h\n'}
+[1.063195] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[1.063416] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_introspection_c.h\n'}
+[1.063501] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_introspection_c.h\n'}
+[1.063584] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_introspection_c.h\n'}
+[1.063808] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_introspection_c.h\n'}
+[1.063901] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_introspection_c.h\n'}
+[1.063979] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[1.064310] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/ball_result.hpp\n'}
+[1.064394] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__builder.hpp\n'}
+[1.064469] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__struct.hpp\n'}
+[1.064544] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__traits.hpp\n'}
+[1.064623] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__type_support.hpp\n'}
+[1.064695] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__builder.hpp\n'}
+[1.064772] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__struct.hpp\n'}
+[1.064853] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__traits.hpp\n'}
+[1.064932] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__type_support.hpp\n'}
+[1.065010] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__builder.hpp\n'}
+[1.065089] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__struct.hpp\n'}
+[1.065252] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__traits.hpp\n'}
+[1.065344] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__type_support.hpp\n'}
+[1.065398] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__builder.hpp\n'}
+[1.065491] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__struct.hpp\n'}
+[1.065545] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__traits.hpp\n'}
+[1.065646] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__type_support.hpp\n'}
+[1.065734] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__builder.hpp\n'}
+[1.065786] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__struct.hpp\n'}
+[1.065884] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__traits.hpp\n'}
+[1.065939] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__type_support.hpp\n'}
+[1.066051] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/hurdle_result.hpp\n'}
+[1.066104] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/line_result.hpp\n'}
+[1.066227] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_command.hpp\n'}
+[1.066281] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_end.hpp\n'}
+[1.066329] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[1.066589] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[1.066696] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[1.066816] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[1.066872] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[1.066969] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[1.067023] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[1.067212] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[1.067314] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[1.067430] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[1.067483] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_introspection_cpp.hpp\n'}
+[1.067577] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_introspection_cpp.hpp\n'}
+[1.067672] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/pythonpath.sh\n'}
+[1.067764] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/pythonpath.dsv\n'}
+[1.067951] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/PKG-INFO\n'}
+[1.068042] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/SOURCES.txt\n'}
+[1.068131] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/dependency_links.txt\n'}
+[1.068216] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/top_level.txt\n'}
+[1.068554] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/__init__.py\n'}
+[1.068664] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_c.c\n'}
+[1.068755] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_fastrtps_c.c\n'}
+[1.068868] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_introspection_c.c\n'}
+[1.068953] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/libmsgs__rosidl_generator_py.so\n'}
+[1.069039] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/__init__.py\n'}
+[1.069093] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_ball_result.py\n'}
+[1.069199] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_ball_result_s.c\n'}
+[1.069251] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_hurdle_result.py\n'}
+[1.069348] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_hurdle_result_s.c\n'}
+[1.069404] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_line_result.py\n'}
+[1.069511] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_line_result_s.c\n'}
+[1.069567] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_command.py\n'}
+[1.069677] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_command_s.c\n'}
+[1.069794] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_end.py\n'}
+[1.069846] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_end_s.c\n'}
+[1.069900] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.069998] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.070088] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.070232] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.070421] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.070584] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[1.070705] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/LineResult.idl\n'}
+[1.070812] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/BallResult.idl\n'}
+[1.070915] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/HurdleResult.idl\n'}
+[1.071018] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionEnd.idl\n'}
+[1.071118] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionCommand.idl\n'}
+[1.071219] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/LineResult.msg\n'}
+[1.071317] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/BallResult.msg\n'}
+[1.071413] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/HurdleResult.msg\n'}
+[1.071508] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionEnd.msg\n'}
+[1.071607] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionCommand.msg\n'}
+[1.071717] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/package_run_dependencies/msgs\n'}
+[1.071824] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/parent_prefix_path/msgs\n'}
+[1.071930] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/ament_prefix_path.sh\n'}
+[1.072031] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/ament_prefix_path.dsv\n'}
+[1.072131] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/path.sh\n'}
+[1.072231] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/path.dsv\n'}
+[1.072328] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.bash\n'}
+[1.072423] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.sh\n'}
+[1.072518] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.zsh\n'}
+[1.072620] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.dsv\n'}
+[1.072710] (msgs) StdoutLine: {'line': b'-- Symlinking: /home/solhee/irc/install/msgs/share/msgs/package.dsv\n'}
+[1.078313] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/packages/msgs\n'}
+[1.078505] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake-extras.cmake\n'}
+[1.078575] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[1.078673] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[1.078764] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[1.078816] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[1.078906] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[1.078999] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[1.079096] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/msgsConfig.cmake\n'}
+[1.079191] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/msgsConfig-version.cmake\n'}
+[1.079284] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/package.xml\n'}
+[1.079415] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_generator_c.so\n'}
+[1.079600] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_fastrtps_c.so\n'}
+[1.079768] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_introspection_c.so\n'}
+[1.079914] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_c.so\n'}
+[1.080062] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_fastrtps_cpp.so\n'}
+[1.080215] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_introspection_cpp.so\n'}
+[1.080361] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_cpp.so\n'}
+[1.101061] (-) TimerEvent: {}
+[1.103942] (msgs) StdoutLine: {'line': b"Listing '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs'...\n"}
+[1.104014] (msgs) StdoutLine: {'line': b"Compiling '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/__init__.py'...\n"}
+[1.104046] (msgs) StdoutLine: {'line': b"Listing '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg'...\n"}
+[1.107146] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_generator_py.so\n'}
+[1.107376] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cExport.cmake\n'}
+[1.107468] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cExport-noconfig.cmake\n'}
+[1.107523] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cExport.cmake\n'}
+[1.107680] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake\n'}
+[1.107793] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cExport.cmake\n'}
+[1.107850] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake\n'}
+[1.107897] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cExport.cmake\n'}
+[1.107939] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cExport-noconfig.cmake\n'}
+[1.107981] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cppExport.cmake\n'}
+[1.108022] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cppExport.cmake\n'}
+[1.108070] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake\n'}
+[1.108115] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[1.108161] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake\n'}
+[1.108202] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cppExport.cmake\n'}
+[1.108243] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cppExport-noconfig.cmake\n'}
+[1.108284] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_pyExport.cmake\n'}
+[1.108329] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_pyExport-noconfig.cmake\n'}
+[1.109183] (msgs) CommandEnded: {'returncode': 0}
+[1.125249] (msgs) JobEnded: {'identifier': 'msgs', 'rc': 0}
+[1.126004] (vision) JobStarted: {'identifier': 'vision'}
+[1.131343] (vision) JobProgress: {'identifier': 'vision', 'progress': 'cmake'}
+[1.131949] (vision) Command: {'cmd': ['/usr/bin/cmake', '/home/solhee/irc/src/vision', '-DAMENT_CMAKE_SYMLINK_INSTALL=1', '-DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/vision'], 'cwd': '/home/solhee/irc/build/vision', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/vision'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/msgs:/home/solhee/irc/install/vision:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[1.139993] (vision) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[1.201142] (-) TimerEvent: {}
+[1.224190] (vision) StdoutLine: {'line': b'-- Override CMake install command with custom implementation using symlinks instead of copying resources\n'}
+[1.228126] (vision) StdoutLine: {'line': b'-- Found rclpy: 3.3.20 (/opt/ros/humble/share/rclpy/cmake)\n'}
+[1.228237] (vision) StdoutLine: {'line': b'-- Found sensor_msgs: 4.9.1 (/opt/ros/humble/share/sensor_msgs/cmake)\n'}
+[1.243710] (vision) StdoutLine: {'line': b'-- Found rosidl_generator_c: 3.1.8 (/opt/ros/humble/share/rosidl_generator_c/cmake)\n'}
+[1.245131] (vision) StdoutLine: {'line': b'-- Found rosidl_adapter: 3.1.8 (/opt/ros/humble/share/rosidl_adapter/cmake)\n'}
+[1.248752] (vision) StdoutLine: {'line': b'-- Found rosidl_generator_cpp: 3.1.8 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)\n'}
+[1.254620] (vision) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c\n'}
+[1.262301] (vision) StdoutLine: {'line': b'-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp\n'}
+[1.295213] (vision) StdoutLine: {'line': b'-- Found cv_bridge: 3.2.1 (/opt/ros/humble/share/cv_bridge/cmake)\n'}
+[1.300439] (vision) StdoutLine: {'line': b'-- Found message_filters: 4.3.14 (/opt/ros/humble/share/message_filters/cmake)\n'}
+[1.301221] (-) TimerEvent: {}
+[1.317856] (vision) StdoutLine: {'line': b'-- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)\n'}
+[1.318789] (vision) StdoutLine: {'line': b'-- Found rmw_fastrtps_cpp: 6.2.10 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)\n'}
+[1.382896] (vision) StdoutLine: {'line': b"-- Using RMW implementation 'rmw_fastrtps_cpp' as default\n"}
+[1.401328] (-) TimerEvent: {}
+[1.407053] (vision) StdoutLine: {'line': b'-- Found msgs: 0.0.0 (/home/solhee/irc/install/msgs/share/msgs/cmake)\n'}
+[1.476930] (vision) StdoutLine: {'line': b'-- Configuring done\n'}
+[1.478926] (vision) StdoutLine: {'line': b'-- Generating done\n'}
+[1.480055] (vision) StdoutLine: {'line': b'-- Build files have been written to: /home/solhee/irc/build/vision\n'}
+[1.484257] (vision) CommandEnded: {'returncode': 0}
+[1.484648] (vision) JobProgress: {'identifier': 'vision', 'progress': 'build'}
+[1.484846] (vision) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/solhee/irc/build/vision', '--', '-j12', '-l12'], 'cwd': '/home/solhee/irc/build/vision', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/vision'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/msgs:/home/solhee/irc/install/vision:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[1.501440] (-) TimerEvent: {}
+[1.513048] (vision) CommandEnded: {'returncode': 0}
+[1.513635] (vision) JobProgress: {'identifier': 'vision', 'progress': 'install'}
+[1.513876] (vision) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/solhee/irc/build/vision'], 'cwd': '/home/solhee/irc/build/vision', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('VSCODE_CWD', '/home/solhee/irc'), ('VSCODE_ESM_ENTRYPOINT', 'vs/workbench/api/node/extensionHostProcess'), ('CODEX_CI', '1'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('CODEX_INTERNAL_ORIGINATOR_OVERRIDE', 'codex_vscode'), ('VSCODE_NLS_CONFIG', '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}'), ('VSCODE_HANDLES_UNCAUGHT_ERRORS', 'true'), ('XDG_SESSION_TYPE', 'x11'), ('DEBUG', 'release'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/solhee'), ('CHROME_DESKTOP', 'code.desktop'), ('OLDPWD', '/home/solhee/irc'), ('DESKTOP_SESSION', 'ubuntu'), ('VSCODE_IPC_HOOK', '/run/user/1001/vscode-b321986a-1.10-main.sock'), ('ROS_PYTHON_VERSION', '3'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('PAGER', 'cat'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('LC_CTYPE', 'C.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('NO_COLOR', '1'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', ''), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('VSCODE_CRASH_REPORTER_PROCESS_TYPE', 'extensionHost'), ('COLCON_PREFIX_PATH', '/home/solhee/irc/install:/home/solhee/ros2_study/install'), ('CODEX_PERMISSION_PROFILE', ':workspace'), ('APPLICATION_INSIGHTS_NO_STATSBEAT', 'true'), ('ROS_DISTRO', 'humble'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('XDG_SESSION_CLASS', 'user'), ('RUST_LOG', 'warn'), ('USERNAME', 'solhee'), ('TERM', 'dumb'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('FC_FONTATIONS', '1'), ('ROS_LOCALHOST_ONLY', '0'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('GDK_BACKEND', 'x11'), ('DISPLAY', ':1'), ('CODEX_SANDBOX_NETWORK_DISABLED', '1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'C.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('GH_PAGER', 'cat'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('ROS_DOMAIN_ID', '10'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d'), ('QT_ACCESSIBILITY', '1'), ('ELECTRON_RUN_AS_NODE', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('CODEX_THREAD_ID', '019f57cd-1947-7112-b25c-63802f5d71f7'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('GIT_PAGER', 'cat'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/vision'), ('VSCODE_CLI', '1'), ('LC_ALL', 'C.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('VSCODE_CODE_CACHE_PATH', '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('PYTHONPATH', '/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('ELECTRON_NO_ATTACH_CONSOLE', '1'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/msgs:/home/solhee/irc/install/vision:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/decision:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble'), ('VSCODE_PID', '26578')]), 'shell': False}
+[1.521074] (vision) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[1.521611] (vision) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[1.521766] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/yolo_detector.py\n'}
+[1.521888] (vision) StdoutLine: {'line': b'-- Symlinking: /home/solhee/irc/install/vision/lib/vision/realsense_ball_detector.py\n'}
+[1.531235] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/ball_vision_fusion.py\n'}
+[1.531423] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/line_status_publisher.py\n'}
+[1.531554] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/config/settings.ini\n'}
+[1.531693] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/package_run_dependencies/vision\n'}
+[1.531943] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/parent_prefix_path/vision\n'}
+[1.532309] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/ament_prefix_path.sh\n'}
+[1.532685] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/ament_prefix_path.dsv\n'}
+[1.533052] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/path.sh\n'}
+[1.533399] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/path.dsv\n'}
+[1.533747] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.bash\n'}
+[1.534093] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.sh\n'}
+[1.534555] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.zsh\n'}
+[1.534920] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.dsv\n'}
+[1.535089] (vision) StdoutLine: {'line': b'-- Symlinking: /home/solhee/irc/install/vision/share/vision/package.dsv\n'}
+[1.542744] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/packages/vision\n'}
+[1.542946] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/cmake/visionConfig.cmake\n'}
+[1.543014] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/cmake/visionConfig-version.cmake\n'}
+[1.543066] (vision) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/package.xml\n'}
+[1.544784] (vision) CommandEnded: {'returncode': 0}
+[1.556331] (vision) JobEnded: {'identifier': 'vision', 'rc': 0}
+[1.557201] (robot_bringup) JobStarted: {'identifier': 'robot_bringup'}
+[1.601542] (-) TimerEvent: {}
+[1.701671] (-) TimerEvent: {}
+[1.801890] (-) TimerEvent: {}
+[1.902300] (-) TimerEvent: {}
+[2.002618] (-) TimerEvent: {}
+[2.102958] (-) TimerEvent: {}
+[2.203345] (-) TimerEvent: {}
+[2.303667] (-) TimerEvent: {}
+[2.403923] (-) TimerEvent: {}
+[2.504146] (-) TimerEvent: {}
+[2.604384] (-) TimerEvent: {}
+[2.704558] (-) TimerEvent: {}
+[2.804882] (-) TimerEvent: {}
+[2.905283] (-) TimerEvent: {}
+[3.005679] (-) TimerEvent: {}
+[3.106023] (-) TimerEvent: {}
+[3.206434] (-) TimerEvent: {}
+[3.306868] (-) TimerEvent: {}
+[3.407282] (-) TimerEvent: {}
+[3.507694] (-) TimerEvent: {}
+[3.608093] (-) TimerEvent: {}
+[3.708452] (-) TimerEvent: {}
+[3.808796] (-) TimerEvent: {}
+[3.909125] (-) TimerEvent: {}
+[4.009451] (-) TimerEvent: {}
+[4.109807] (-) TimerEvent: {}
+[4.210209] (-) TimerEvent: {}
+[4.310632] (-) TimerEvent: {}
+[4.411042] (-) TimerEvent: {}
+[4.511448] (-) TimerEvent: {}
+[4.611815] (-) TimerEvent: {}
+[4.712139] (-) TimerEvent: {}
+[4.812464] (-) TimerEvent: {}
+[4.912874] (-) TimerEvent: {}
+[5.013217] (-) TimerEvent: {}
+[5.113647] (-) TimerEvent: {}
+[5.213974] (-) TimerEvent: {}
+[5.314385] (-) TimerEvent: {}
+[5.414801] (-) TimerEvent: {}
+[5.515209] (-) TimerEvent: {}
+[5.615650] (-) TimerEvent: {}
+[5.715982] (-) TimerEvent: {}
+[5.816326] (-) TimerEvent: {}
+[5.916734] (-) TimerEvent: {}
+[6.017071] (-) TimerEvent: {}
+[6.117400] (-) TimerEvent: {}
+[6.217676] (-) TimerEvent: {}
+[6.318073] (-) TimerEvent: {}
+[6.418480] (-) TimerEvent: {}
+[6.518906] (-) TimerEvent: {}
+[6.619320] (-) TimerEvent: {}
+[6.719682] (-) TimerEvent: {}
+[6.820070] (-) TimerEvent: {}
+[6.920443] (-) TimerEvent: {}
+[7.020804] (-) TimerEvent: {}
+[7.121203] (-) TimerEvent: {}
+[7.221627] (-) TimerEvent: {}
+[7.322033] (-) TimerEvent: {}
+[7.422458] (-) TimerEvent: {}
+[7.522886] (-) TimerEvent: {}
+[7.623286] (-) TimerEvent: {}
+[7.723707] (-) TimerEvent: {}
+[7.824114] (-) TimerEvent: {}
+[7.924519] (-) TimerEvent: {}
+[8.025011] (-) TimerEvent: {}
+[8.125293] (-) TimerEvent: {}
+[8.225611] (-) TimerEvent: {}
+[8.325937] (-) TimerEvent: {}
+[8.426241] (-) TimerEvent: {}
+[8.526542] (-) TimerEvent: {}
+[8.626883] (-) TimerEvent: {}
+[8.727267] (-) TimerEvent: {}
+[8.827693] (-) TimerEvent: {}
+[8.928016] (-) TimerEvent: {}
+[9.028324] (-) TimerEvent: {}
+[9.128717] (-) TimerEvent: {}
+[9.229029] (-) TimerEvent: {}
+[9.329343] (-) TimerEvent: {}
+[9.429665] (-) TimerEvent: {}
+[9.529990] (-) TimerEvent: {}
+[9.630353] (-) TimerEvent: {}
+[9.730672] (-) TimerEvent: {}
+[9.830978] (-) TimerEvent: {}
+[9.931282] (-) TimerEvent: {}
+[10.031682] (-) TimerEvent: {}
+[10.132015] (-) TimerEvent: {}
+[10.232333] (-) TimerEvent: {}
+[10.332729] (-) TimerEvent: {}
+[10.433053] (-) TimerEvent: {}
+[10.533377] (-) TimerEvent: {}
+[10.633771] (-) TimerEvent: {}
+[10.734118] (-) TimerEvent: {}
+[10.834541] (-) TimerEvent: {}
+[10.934897] (-) TimerEvent: {}
+[11.035206] (-) TimerEvent: {}
+[11.135608] (-) TimerEvent: {}
+[11.235998] (-) TimerEvent: {}
+[11.336399] (-) TimerEvent: {}
+[11.436824] (-) TimerEvent: {}
+[11.537217] (-) TimerEvent: {}
+[11.637630] (-) TimerEvent: {}
+[11.738020] (-) TimerEvent: {}
+[11.838425] (-) TimerEvent: {}
+[11.938788] (-) TimerEvent: {}
+[12.039170] (-) TimerEvent: {}
+[12.139587] (-) TimerEvent: {}
+[12.240040] (-) TimerEvent: {}
+[12.340446] (-) TimerEvent: {}
+[12.440832] (-) TimerEvent: {}
+[12.541200] (-) TimerEvent: {}
+[12.641648] (-) TimerEvent: {}
+[12.742005] (-) TimerEvent: {}
+[12.842354] (-) TimerEvent: {}
+[12.942698] (-) TimerEvent: {}
+[13.042999] (-) TimerEvent: {}
+[13.143281] (-) TimerEvent: {}
+[13.243593] (-) TimerEvent: {}
+[13.343887] (-) TimerEvent: {}
+[13.444175] (-) TimerEvent: {}
+[13.544466] (-) TimerEvent: {}
+[13.644785] (-) TimerEvent: {}
+[13.745092] (-) TimerEvent: {}
+[13.845405] (-) TimerEvent: {}
+[13.945665] (-) TimerEvent: {}
+[14.045961] (-) TimerEvent: {}
+[14.146245] (-) TimerEvent: {}
+[14.246585] (-) TimerEvent: {}
+[14.346934] (-) TimerEvent: {}
+[14.447271] (-) TimerEvent: {}
+[14.547683] (-) TimerEvent: {}
+[14.648079] (-) TimerEvent: {}
+[14.748411] (-) TimerEvent: {}
+[14.848826] (-) TimerEvent: {}
+[14.949224] (-) TimerEvent: {}
+[15.049659] (-) TimerEvent: {}
+[15.150050] (-) TimerEvent: {}
+[15.250369] (-) TimerEvent: {}
+[15.350670] (-) TimerEvent: {}
+[15.451053] (-) TimerEvent: {}
+[15.551444] (-) TimerEvent: {}
+[15.651813] (-) TimerEvent: {}
+[15.752140] (-) TimerEvent: {}
+[15.852468] (-) TimerEvent: {}
+[15.952809] (-) TimerEvent: {}
+[16.053124] (-) TimerEvent: {}
+[16.153426] (-) TimerEvent: {}
+[16.253759] (-) TimerEvent: {}
+[16.354075] (-) TimerEvent: {}
+[16.454463] (-) TimerEvent: {}
+[16.554812] (-) TimerEvent: {}
+[16.655120] (-) TimerEvent: {}
+[16.755448] (-) TimerEvent: {}
+[16.855873] (-) TimerEvent: {}
+[16.956210] (-) TimerEvent: {}
+[17.056526] (-) TimerEvent: {}
+[17.156859] (-) TimerEvent: {}
+[17.257174] (-) TimerEvent: {}
+[17.357496] (-) TimerEvent: {}
+[17.457842] (-) TimerEvent: {}
+[17.558166] (-) TimerEvent: {}
+[17.658589] (-) TimerEvent: {}
+[17.758930] (-) TimerEvent: {}
+[17.859307] (-) TimerEvent: {}
+[17.959711] (-) TimerEvent: {}
+[18.060050] (-) TimerEvent: {}
+[18.160378] (-) TimerEvent: {}
+[18.260685] (-) TimerEvent: {}
+[18.361109] (-) TimerEvent: {}
+[18.461460] (-) TimerEvent: {}
+[18.561894] (-) TimerEvent: {}
+[18.662310] (-) TimerEvent: {}
+[18.762658] (-) TimerEvent: {}
+[18.862987] (-) TimerEvent: {}
+[18.963382] (-) TimerEvent: {}
+[19.063745] (-) TimerEvent: {}
+[19.164085] (-) TimerEvent: {}
+[19.264439] (-) TimerEvent: {}
+[19.364805] (-) TimerEvent: {}
+[19.465134] (-) TimerEvent: {}
+[19.565451] (-) TimerEvent: {}
+[19.665760] (-) TimerEvent: {}
+[19.766101] (-) TimerEvent: {}
+[19.866445] (-) TimerEvent: {}
+[19.966819] (-) TimerEvent: {}
+[20.067153] (-) TimerEvent: {}
+[20.167467] (-) TimerEvent: {}
+[20.267794] (-) TimerEvent: {}
+[20.368102] (-) TimerEvent: {}
+[20.468417] (-) TimerEvent: {}
+[20.568743] (-) TimerEvent: {}
+[20.669133] (-) TimerEvent: {}
+[20.769479] (-) TimerEvent: {}
+[20.869823] (-) TimerEvent: {}
+[20.970139] (-) TimerEvent: {}
+[21.070465] (-) TimerEvent: {}
+[21.170826] (-) TimerEvent: {}
+[21.271165] (-) TimerEvent: {}
+[21.371515] (-) TimerEvent: {}
+[21.471845] (-) TimerEvent: {}
+[21.572232] (-) TimerEvent: {}
+[21.672648] (-) TimerEvent: {}
+[21.773000] (-) TimerEvent: {}
+[21.873428] (-) TimerEvent: {}
+[21.973871] (-) TimerEvent: {}
+[22.074221] (-) TimerEvent: {}
+[22.174585] (-) TimerEvent: {}
+[22.274923] (-) TimerEvent: {}
+[22.375244] (-) TimerEvent: {}
+[22.475667] (-) TimerEvent: {}
+[22.576021] (-) TimerEvent: {}
+[22.676380] (-) TimerEvent: {}
+[22.776687] (-) TimerEvent: {}
+[22.877027] (-) TimerEvent: {}
+[22.977362] (-) TimerEvent: {}
+[23.077762] (-) TimerEvent: {}
+[23.178064] (-) TimerEvent: {}
+[23.278378] (-) TimerEvent: {}
+[23.378703] (-) TimerEvent: {}
+[23.478879] (-) TimerEvent: {}
+[23.579115] (-) TimerEvent: {}
+[23.679457] (-) TimerEvent: {}
+[23.779748] (-) TimerEvent: {}
+[23.879966] (-) TimerEvent: {}
+[23.980272] (-) TimerEvent: {}
+[24.080635] (-) TimerEvent: {}
+[24.180967] (-) TimerEvent: {}
+[24.281311] (-) TimerEvent: {}
+[24.381644] (-) TimerEvent: {}
+[24.481954] (-) TimerEvent: {}
+[24.582261] (-) TimerEvent: {}
+[24.682572] (-) TimerEvent: {}
+[24.782872] (-) TimerEvent: {}
+[24.883188] (-) TimerEvent: {}
+[24.983489] (-) TimerEvent: {}
+[25.083794] (-) TimerEvent: {}
+[25.184092] (-) TimerEvent: {}
+[25.284494] (-) TimerEvent: {}
+[25.384934] (-) TimerEvent: {}
+[25.485267] (-) TimerEvent: {}
+[25.585623] (-) TimerEvent: {}
+[25.686023] (-) TimerEvent: {}
+[25.786330] (-) TimerEvent: {}
+[25.886597] (-) TimerEvent: {}
+[25.986969] (-) TimerEvent: {}
+[26.087249] (-) TimerEvent: {}
+[26.187516] (-) TimerEvent: {}
+[26.287937] (-) TimerEvent: {}
+[26.388347] (-) TimerEvent: {}
+[26.488751] (-) TimerEvent: {}
+[26.589153] (-) TimerEvent: {}
+[26.689493] (-) TimerEvent: {}
+[26.789842] (-) TimerEvent: {}
+[26.890272] (-) TimerEvent: {}
+[26.990655] (-) TimerEvent: {}
+[27.091013] (-) TimerEvent: {}
+[27.191393] (-) TimerEvent: {}
+[27.291786] (-) TimerEvent: {}
+[27.392190] (-) TimerEvent: {}
+[27.492617] (-) TimerEvent: {}
+[27.592966] (-) TimerEvent: {}
+[27.693340] (-) TimerEvent: {}
+[27.793679] (-) TimerEvent: {}
+[27.894015] (-) TimerEvent: {}
+[27.994415] (-) TimerEvent: {}
+[28.094765] (-) TimerEvent: {}
+[28.195095] (-) TimerEvent: {}
+[28.295410] (-) TimerEvent: {}
+[28.395769] (-) TimerEvent: {}
+[28.495999] (-) TimerEvent: {}
+[28.596365] (-) TimerEvent: {}
+[28.696769] (-) TimerEvent: {}
+[28.797046] (-) TimerEvent: {}
+[28.897275] (-) TimerEvent: {}
+[28.997501] (-) TimerEvent: {}
+[29.097857] (-) TimerEvent: {}
+[29.198177] (-) TimerEvent: {}
+[29.298588] (-) TimerEvent: {}
+[29.398859] (-) TimerEvent: {}
+[29.499127] (-) TimerEvent: {}
+[29.599502] (-) TimerEvent: {}
+[29.699927] (-) TimerEvent: {}
+[29.800266] (-) TimerEvent: {}
+[29.900628] (-) TimerEvent: {}
+[30.000977] (-) TimerEvent: {}
+[30.101313] (-) TimerEvent: {}
+[30.201717] (-) TimerEvent: {}
+[30.302054] (-) TimerEvent: {}
+[30.402366] (-) TimerEvent: {}
+[30.502667] (-) TimerEvent: {}
+[30.602989] (-) TimerEvent: {}
+[30.703317] (-) TimerEvent: {}
+[30.803653] (-) TimerEvent: {}
+[30.903973] (-) TimerEvent: {}
+[31.004302] (-) TimerEvent: {}
+[31.104643] (-) TimerEvent: {}
+[31.204898] (-) TimerEvent: {}
+[31.305122] (-) TimerEvent: {}
+[31.405419] (-) TimerEvent: {}
+[31.505765] (-) TimerEvent: {}
+[31.606030] (-) TimerEvent: {}
+[31.706191] (-) TimerEvent: {}
+[31.806342] (-) TimerEvent: {}
+[31.837498] (robot_bringup) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/home/solhee/irc/build/robot_bringup/build', '--no-deps', 'symlink_data', '--force'], 'cwd': '/home/solhee/irc/build/robot_bringup', 'env': {'LESSOPEN': '| /usr/bin/lesspipe %s', 'VSCODE_CWD': '/home/solhee/irc', 'VSCODE_ESM_ENTRYPOINT': 'vs/workbench/api/node/extensionHostProcess', 'CODEX_CI': '1', 'LANGUAGE': 'en', 'USER': 'solhee', 'LC_TIME': 'ko_KR.UTF-8', 'CODEX_INTERNAL_ORIGINATOR_OVERRIDE': 'codex_vscode', 'VSCODE_NLS_CONFIG': '{"userLocale":"ko","osLocale":"en","resolvedLanguage":"ko","defaultMessagesFile":"/usr/share/code/resources/app/out/nls.messages.json","languagePack":{"translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","messagesFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622/nls.messages.json","corruptMarkerFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"},"locale":"ko","availableLanguages":{"*":"ko"},"_languagePackId":"d388dd7cee3121ee62fbc481abb885b9.ko","_languagePackSupport":true,"_translationsConfigFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/tcf.json","_cacheRoot":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko","_resolvedLanguagePackCoreLocation":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/072586267e68ece9a47aa43f8c108e0dcbf44622","_corruptedFile":"/home/solhee/.config/Code/clp/d388dd7cee3121ee62fbc481abb885b9.ko/corrupted.info"}', 'VSCODE_HANDLES_UNCAUGHT_ERRORS': 'true', 'XDG_SESSION_TYPE': 'x11', 'DEBUG': 'release', 'SHLVL': '2', 'LD_LIBRARY_PATH': '/home/solhee/irc/install/msgs/lib:/home/solhee/irc/install/dynamixel_sdk/lib:/home/solhee/ros2_study/install/realsense2_camera/lib:/home/solhee/ros2_study/install/realsense2_camera_msgs/lib:/home/solhee/ros2_study/install/my_first_package_msgs/lib:/usr/lib/x86_64-linux-gnu/gazebo-11/plugins:/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/solhee', 'CHROME_DESKTOP': 'code.desktop', 'OLDPWD': '/home/solhee/irc', 'DESKTOP_SESSION': 'ubuntu', 'VSCODE_IPC_HOOK': '/run/user/1001/vscode-b321986a-1.10-main.sock', 'ROS_PYTHON_VERSION': '3', 'GNOME_SHELL_SESSION_MODE': 'ubuntu', 'GTK_MODULES': 'gail:atk-bridge', 'PAGER': 'cat', 'LC_MONETARY': 'ko_KR.UTF-8', 'LC_CTYPE': 'C.UTF-8', 'SYSTEMD_EXEC_PID': '2156', 'NO_COLOR': '1', 'DBUS_SESSION_BUS_ADDRESS': 'unix:path=/run/user/1001/bus', 'COLORTERM': '', 'TERMINATOR_DBUS_NAME': 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f', 'VSCODE_CRASH_REPORTER_PROCESS_TYPE': 'extensionHost', 'COLCON_PREFIX_PATH': '/home/solhee/irc/install:/home/solhee/ros2_study/install', 'CODEX_PERMISSION_PROFILE': ':workspace', 'APPLICATION_INSIGHTS_NO_STATSBEAT': 'true', 'ROS_DISTRO': 'humble', 'GTK_IM_MODULE': 'ibus', 'LOGNAME': 'solhee', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'XDG_SESSION_CLASS': 'user', 'RUST_LOG': 'warn', 'USERNAME': 'solhee', 'TERM': 'dumb', 'GNOME_DESKTOP_SESSION_ID': 'this-is-deprecated', 'FC_FONTATIONS': '1', 'ROS_LOCALHOST_ONLY': '0', 'WINDOWPATH': '2', 'PATH': '/home/solhee/.local/bin:/home/solhee/bin:/home/solhee/.codex/tmp/arg0/codex-arg0meprlE:/opt/ros/humble/bin:/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin:/home/solhee/.vscode/extensions/openai.chatgpt-26.707.41301-linux-x64/bin/linux-x86_64', 'SESSION_MANAGER': 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129', 'PAPERSIZE': 'a4', 'XDG_MENU_PREFIX': 'gnome-', 'LC_ADDRESS': 'ko_KR.UTF-8', 'GNOME_TERMINAL_SCREEN': '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0', 'XDG_RUNTIME_DIR': '/run/user/1001', 'GDK_BACKEND': 'x11', 'DISPLAY': ':1', 'CODEX_SANDBOX_NETWORK_DISABLED': '1', 'TERMINATOR_DBUS_PATH': '/net/tenshu/Terminator2', 'LANG': 'C.UTF-8', 'XDG_CURRENT_DESKTOP': 'ubuntu:GNOME', 'IBUS_DISABLE_SNOOPER': '1', 'LC_TELEPHONE': 'ko_KR.UTF-8', 'XMODIFIERS': '@im=ibus', 'GH_PAGER': 'cat', 'XDG_SESSION_DESKTOP': 'ubuntu', 'XAUTHORITY': '/run/user/1001/gdm/Xauthority', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'GNOME_TERMINAL_SERVICE': ':1.95', 'SSH_AGENT_LAUNCHER': 'gnome-keyring', 'SSH_AUTH_SOCK': '/run/user/1001/keyring/ssh', 'ROS_DOMAIN_ID': '10', 'AMENT_PREFIX_PATH': '/home/solhee/irc/install/decision:/home/solhee/irc/install/vision:/home/solhee/irc/install/robot_bringup:/home/solhee/irc/install/msgs:/home/solhee/ros2_study/install/sol_package:/home/solhee/ros2_study/install/sol_line_track:/home/solhee/ros2_study/install/rnd:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs:/home/solhee/ros2_study/install/my_first_package:/opt/ros/humble', 'SHELL': '/bin/bash', 'LC_NAME': 'ko_KR.UTF-8', 'TERMINATOR_UUID': 'urn:uuid:d7bde072-3629-4eb0-b72d-0971a8648e2d', 'QT_ACCESSIBILITY': '1', 'ELECTRON_RUN_AS_NODE': '1', 'GDMSESSION': 'ubuntu', 'LESSCLOSE': '/usr/bin/lesspipe %s %s', 'CODEX_THREAD_ID': '019f57cd-1947-7112-b25c-63802f5d71f7', 'LC_MEASUREMENT': 'ko_KR.UTF-8', 'GPG_AGENT_INFO': '/run/user/1001/gnupg/S.gpg-agent:0:1', 'LC_IDENTIFICATION': 'ko_KR.UTF-8', 'GIT_PAGER': 'cat', 'QT_IM_MODULE': 'ibus', 'PWD': '/home/solhee/irc/build/robot_bringup', 'VSCODE_CLI': '1', 'LC_ALL': 'C.UTF-8', 'XDG_CONFIG_DIRS': '/etc/xdg/xdg-ubuntu:/etc/xdg', 'VSCODE_CODE_CACHE_PATH': '/home/solhee/.config/Code/CachedData/072586267e68ece9a47aa43f8c108e0dcbf44622', 'XDG_DATA_DIRS': '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop', 'PYTHONPATH': '/home/solhee/irc/build/robot_bringup/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/decision/lib/python3.10/site-packages:/home/solhee/irc/install/robot_bringup/lib/python3.10/site-packages:/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/sol_package/lib/python3.10/site-packages:/home/solhee/ros2_study/install/sol_line_track/lib/python3.10/site-packages:/home/solhee/ros2_study/install/rnd/lib/python3.10/site-packages:/home/solhee/ros2_study/install/realsense2_camera_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package_msgs/local/lib/python3.10/dist-packages:/home/solhee/ros2_study/install/my_first_package/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'LC_NUMERIC': 'ko_KR.UTF-8', 'LC_PAPER': 'ko_KR.UTF-8', 'COLCON': '1', 'VTE_VERSION': '6800', 'ELECTRON_NO_ATTACH_CONSOLE': '1', 'CMAKE_PREFIX_PATH': '/home/solhee/irc/install/vision:/home/solhee/irc/install/msgs:/home/solhee/irc/install/dynamixel_sdk:/home/solhee/ros2_study/install/realsense2_description:/home/solhee/ros2_study/install/realsense2_camera:/home/solhee/ros2_study/install/realsense2_camera_msgs:/home/solhee/ros2_study/install/my_first_package_msgs', 'VSCODE_PID': '26578'}, 'shell': False}
+[31.906447] (-) TimerEvent: {}
+[31.966694] (robot_bringup) StderrLine: {'line': b'usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]\n'}
+[31.966843] (robot_bringup) StderrLine: {'line': b'   or: setup.py --help [cmd1 cmd2 ...]\n'}
+[31.966883] (robot_bringup) StderrLine: {'line': b'   or: setup.py --help-commands\n'}
+[31.966917] (robot_bringup) StderrLine: {'line': b'   or: setup.py cmd --help\n'}
+[31.966944] (robot_bringup) StderrLine: {'line': b'\n'}
+[31.966971] (robot_bringup) StderrLine: {'line': b'error: option --editable not recognized\n'}
+[31.978686] (robot_bringup) CommandEnded: {'returncode': 1}
+[31.978992] (robot_bringup) JobEnded: {'identifier': 'robot_bringup', 'rc': 1}
+[31.988958] (-) EventReactorShutdown: {}

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pyy/irc/src/msgs
+CMAKE_SOURCE_DIR = /home/solhee/irc/src/msgs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pyy/irc/build/msgs
+CMAKE_BINARY_DIR = /home/solhee/irc/build/msgs
 
 # Utility rule file for msgs_uninstall.
 
@@ -67,7 +67,7 @@ include CMakeFiles/msgs_uninstall.dir/compiler_depend.make
 include CMakeFiles/msgs_uninstall.dir/progress.make
 
 CMakeFiles/msgs_uninstall:
-	/usr/bin/cmake -P /home/pyy/irc/build/msgs/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
+	/usr/bin/cmake -P /home/solhee/irc/build/msgs/ament_cmake_uninstall_target/ament_cmake_uninstall_target.cmake
 
 msgs_uninstall: CMakeFiles/msgs_uninstall
 msgs_uninstall: CMakeFiles/msgs_uninstall.dir/build.make
@@ -82,6 +82,6 @@ CMakeFiles/msgs_uninstall.dir/clean:
 .PHONY : CMakeFiles/msgs_uninstall.dir/clean
 
 CMakeFiles/msgs_uninstall.dir/depend:
-	cd /home/pyy/irc/build/msgs && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/pyy/irc/src/msgs /home/pyy/irc/src/msgs /home/pyy/irc/build/msgs /home/pyy/irc/build/msgs /home/pyy/irc/build/msgs/CMakeFiles/msgs_uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/solhee/irc/build/msgs && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/solhee/irc/src/msgs /home/solhee/irc/src/msgs /home/solhee/irc/build/msgs /home/solhee/irc/build/msgs /home/solhee/irc/build/msgs/CMakeFiles/msgs_uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/msgs_uninstall.dir/depend
 

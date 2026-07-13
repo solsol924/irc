@@ -1,2 +1,1 @@
-uint8 status
-uint32 angle
+/home/solhee/irc/src/msgs/msg/HurdleResult.msg

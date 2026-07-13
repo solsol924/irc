@@ -8,7 +8,7 @@ module msgs {
     struct BallResult {
       uint8 status;
 
-      uint32 angle;
+      float angle;
 
       boolean ball_in_hand;
     };

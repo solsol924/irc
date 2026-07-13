@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pyy/irc/src/msgs
+CMAKE_SOURCE_DIR = /home/solhee/irc/src/msgs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pyy/irc/build/msgs
+CMAKE_BINARY_DIR = /home/solhee/irc/build/msgs
 
 # Utility rule file for uninstall.
 
@@ -78,6 +78,6 @@ CMakeFiles/uninstall.dir/clean:
 .PHONY : CMakeFiles/uninstall.dir/clean
 
 CMakeFiles/uninstall.dir/depend:
-	cd /home/pyy/irc/build/msgs && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/pyy/irc/src/msgs /home/pyy/irc/src/msgs /home/pyy/irc/build/msgs /home/pyy/irc/build/msgs /home/pyy/irc/build/msgs/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/solhee/irc/build/msgs && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/solhee/irc/src/msgs /home/solhee/irc/src/msgs /home/solhee/irc/build/msgs /home/solhee/irc/build/msgs /home/solhee/irc/build/msgs/CMakeFiles/uninstall.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/uninstall.dir/depend
 

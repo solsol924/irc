@@ -64,8 +64,8 @@ bool msgs__msg__hurdle_result__convert_from_py(PyObject * _pymsg, void * _ros_me
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->angle = PyLong_AsUnsignedLong(field);
+    assert(PyFloat_Check(field));
+    ros_message->angle = (float)PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
 
@@ -103,7 +103,7 @@ PyObject * msgs__msg__hurdle_result__convert_to_py(void * raw_ros_message)
   }
   {  // angle
     PyObject * field = NULL;
-    field = PyLong_FromUnsignedLong(ros_message->angle);
+    field = PyFloat_FromDouble(ros_message->angle);
     {
       int rc = PyObject_SetAttrString(_pymessage, "angle", field);
       Py_DECREF(field);

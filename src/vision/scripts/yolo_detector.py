@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 YOLO Line Tracker - Vision Module
 IRC 2026 Humanoid Robot Competition
@@ -27,10 +29,22 @@ from pathlib import Path
 from typing import Optional, Tuple
 from collections import deque
 
+from line_status_publisher import (
+    LineDecision,
+    LineFeatures,
+    LineStatus,
+    LineStatusPublisher,
+)
+from ball_status_publisher import BallStatusPublisher
+from hurdle_status_publisher import HurdleStatusPublisher
+
 try:
     from ultralytics import YOLO
 except ImportError as e:
     YOLO = None
+
+
+LINE_REPRESENTATIVE_POINT_COUNT = 3
 
 
 # ═══════════════════════════════════════════════════════
@@ -72,22 +86,6 @@ class ObjectDetection:
 #  라인 모션 판단 코드
 # ═══════════════════════════════════════════════════════
 
-class LineStatus:
-    Forward = 1
-    Left_Half_Forward = 2
-    Right_Half_Forward = 3
-    Left_Forward = 4
-    Right_Forward = 5
-    Left_Turn = 6
-    Right_Turn = 7
-    Forward_half = 8
-    Backward_half = 9
-    Left_Move = 10
-    Right_Move = 11
-    Follow_Point = 30
-    Line_Lost = 99
-
-
 LINE_STATUS_NAME = {
     LineStatus.Forward: "Forward",
     LineStatus.Left_Half_Forward: "Left_Half_Forward",
@@ -100,124 +98,42 @@ LINE_STATUS_NAME = {
     LineStatus.Backward_half: "Backward_half",
     LineStatus.Left_Move: "Left_Move",
     LineStatus.Right_Move: "Right_Move",
-    LineStatus.Follow_Point: "Follow_Point",
     LineStatus.Line_Lost: "Line_Lost",
 }
 
 
-@dataclass
-class LineFeatures:
-    point_count: int
-    line_angle: Optional[float] = None
-    curve_a: Optional[float] = None
-    tangent_angle: Optional[float] = None
-    line_distance: Optional[float] = None
-    target_x: Optional[float] = None
-    target_y: Optional[float] = None
-    robot_center_x: float = 320.0
-    robot_center_y: float = 480.0
-    follow_angle: Optional[float] = None
-    follow_distance: Optional[float] = None
+def apply_line_status(
+    payload: dict,
+    frame_w: int,
+    frame_h: int,
+    publisher: Optional[LineStatusPublisher] = None,
+) -> dict:
+    """line_status_publisher의 판단 로직을 호출하고 ROS 모드에서는 즉시 발행한다."""
+    values = {
+        "point_count": int(payload.get("point_count", 0)),
+        "line_angle": payload.get("line_angle"),
+        "curve_a": payload.get("curve_a"),
+        "tangent_angle": payload.get("tangent_angle"),
+        "line_distance": payload.get("line_distance"),
+        "target_x": payload.get("target_x"),
+        "target_y": payload.get("target_y"),
+        "robot_center_x": frame_w / 2.0,
+        "robot_center_y": float(frame_h),
+        "follow_angle": payload.get("follow_angle"),
+        "follow_distance": payload.get("follow_distance"),
+    }
 
+    if publisher is not None:
+        status, angle = publisher.publish_line_status(**values)
+    else:
+        # OpenCV 단독 실행 모드에서는 ROS publish 없이 같은 판단 로직만 사용한다.
+        status, angle = LineDecision().decide(LineFeatures(**values))
 
-class LineDecision:
-    def __init__(self):
-        # 각도 기준. 단위: degree
-        self.forward_angle = 10.0
-        self.turn_angle = 30.0
-
-        # YOLO bbox 중심점 기반 2차 피팅의 a값은 보통 1e-4 단위로 나옴.
-        # 기존 코드의 0.15는 너무 커서 거의 모든 곡선을 직선으로 판단하게 됨.
-        self.curve_a = 5e-5
-
-        # 거리 기준. 단위: pixel
-        self.move_distance = 60.0
-        self.out_distance = 120.0
-
-        # Follow_Point 종료 판단 기준. 현재는 status 판단에는 직접 쓰지 않고 payload로 전달함.
-        self.follow_distance = 40.0
-
-    def decide(self, features: LineFeatures) -> Tuple[int, float]:
-        if features.point_count <= 1:
-            return LineStatus.Line_Lost, 0.0
-
-        # 라인이 중심선에서 많이 벗어나면 좌표 추종 모드로 넘김.
-        # LineResult가 status/angle만 지원하면 angle에 follow_angle을 담아 보냄.
-        if features.line_distance is not None:
-            distance = features.line_distance
-
-            if abs(distance) >= self.out_distance:
-                return LineStatus.Follow_Point, float(features.follow_angle or 0.0)
-
-            # 라인이 중심에서 어느 정도 벗어나 있으면 전진+좌/우 보정 모션 사용.
-            # distance < 0: 라인이 왼쪽에 있음 -> Left_Forward(4)
-            # distance > 0: 라인이 오른쪽에 있음 -> Right_Forward(5)
-            if abs(distance) >= self.move_distance:
-                if distance < 0:
-                    return LineStatus.Left_Forward, 0.0
-                else:
-                    return LineStatus.Right_Forward, 0.0
-
-        if features.point_count == 2:
-            return self._status_from_angle(features.line_angle)
-
-        if features.point_count >= 3:
-            if features.curve_a is None:
-                return self._status_from_angle(features.line_angle)
-
-            if abs(features.curve_a) < self.curve_a:
-                return self._status_from_angle(features.line_angle)
-
-            return self._status_from_angle(features.tangent_angle)
-
-        return LineStatus.Line_Lost, 0.0
-
-    def _status_from_angle(self, angle: Optional[float]) -> Tuple[int, float]:
-        if angle is None:
-            return LineStatus.Line_Lost, 0.0
-
-        abs_angle = abs(angle)
-
-        if abs_angle <= self.forward_angle:
-            return LineStatus.Forward, 0.0
-
-        if abs_angle <= self.turn_angle:
-            if angle < 0:
-                return LineStatus.Left_Half_Forward, abs_angle
-            else:
-                return LineStatus.Right_Half_Forward, abs_angle
-
-        # 큰 각도는 회전 모션으로 보냄.
-        # 만약 모션 패키지에서 6/7을 안 쓰고 10/11만 쓴다면 여기만 Left_Move/Right_Move로 바꾸면 됨.
-        if angle < 0:
-            return LineStatus.Left_Turn, abs_angle
-        else:
-            return LineStatus.Right_Turn, abs_angle
-
-
-LINE_DECISION = LineDecision()
-
-
-def decide_line_payload(payload: dict, frame_w: int, frame_h: int) -> dict:
-    features = LineFeatures(
-        point_count=int(payload.get("point_count", 0)),
-        line_angle=float(payload["line_angle"]) if payload.get("line_angle") is not None else None,
-        curve_a=float(payload["curve_a"]) if payload.get("curve_a") is not None else None,
-        tangent_angle=float(payload["tangent_angle"]) if payload.get("tangent_angle") is not None else None,
-        line_distance=float(payload["line_distance"]) if payload.get("line_distance") is not None else None,
-        target_x=float(payload["target_x"]) if payload.get("target_x") is not None else None,
-        target_y=float(payload["target_y"]) if payload.get("target_y") is not None else None,
-        robot_center_x=frame_w / 2.0,
-        robot_center_y=float(frame_h),
-        follow_angle=float(payload["follow_angle"]) if payload.get("follow_angle") is not None else None,
-        follow_distance=float(payload["follow_distance"]) if payload.get("follow_distance") is not None else None,
-    )
-
-    status, angle = LINE_DECISION.decide(features)
     payload["status"] = int(status)
     payload["status_name"] = LINE_STATUS_NAME.get(int(status), "UNKNOWN")
     payload["angle"] = float(angle)
     return payload
+
 
 class LinePayloadSmoother:
     def __init__(self, window=5, min_valid=3):
@@ -247,14 +163,12 @@ class LinePayloadSmoother:
 
         valid = [
             p for p in self.buffer
-            if int(p.get("point_count", 0)) >= 2
+            if int(p.get("point_count", 0)) >= 1
         ]
 
         # 최근 window 중 유효한 라인이 너무 적으면 LOST 유지
         if len(valid) < self.min_valid:
-            payload["status"] = LineStatus.Line_Lost
-            payload["status_name"] = LINE_STATUS_NAME[LineStatus.Line_Lost]
-            payload["angle"] = 0.0
+            payload["point_count"] = 0
             payload["smooth_valid_count"] = len(valid)
             return payload
 
@@ -278,9 +192,6 @@ class LinePayloadSmoother:
         smoothed["point_count"] = int(round(self._median([p.get("point_count", 0) for p in valid]) or 0))
         smoothed["smooth_valid_count"] = len(valid)
 
-        # 중요: status 숫자를 평균내지 말고, smoothing된 feature로 다시 판단
-        smoothed = decide_line_payload(smoothed, frame_w, frame_h)
-
         return smoothed
     
 LINE_SMOOTHER = LinePayloadSmoother(window=5, min_valid=3)
@@ -299,11 +210,10 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "flip_vertical": False,
 
         # ROI: YOLO line 중심점 중 이 영역 안에 있는 것만 주행용으로 사용
-        "roi_top_ratio": 0.10,
+        "roi_top_ratio": 0.00,
         "roi_bottom_ratio": 1.00,
-        "roi_left_ratio": 0.18,
-        "roi_right_ratio": 0.82,
-        "n_bands": 3,
+        "roi_left_ratio": 0.00,
+        "roi_right_ratio": 1.00,
         "min_points_for_poly": 3,
 
         # YOLO
@@ -358,7 +268,6 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "roi_bottom_ratio": gf("detection", "roi_bottom_ratio", defaults["roi_bottom_ratio"]),
         "roi_left_ratio": gf("detection", "roi_left_ratio", defaults["roi_left_ratio"]),
         "roi_right_ratio": gf("detection", "roi_right_ratio", defaults["roi_right_ratio"]),
-        "n_bands": gi("detection", "n_bands", defaults["n_bands"]),
         "min_points_for_poly": gi("curve", "min_points_for_poly", defaults["min_points_for_poly"]),
 
         "yolo_model": gs("yolo", "model", defaults["yolo_model"]),
@@ -389,22 +298,26 @@ def load_config(ini_path: str = "settings.ini") -> dict:
 # ═══════════════════════════════════════════════════════
 
 def band_sample(centroids, roi_top, roi_bottom, n_bands):
-    """라인 점을 세로 n_bands로 나눠 대표점만 뽑음. 중복 line bbox가 많을 때 안정화용."""
+    """
+    검출된 line bbox 중심점으로 주행용 대표점을 만든다.
+
+    점이 n_bands개 이하면 bbox 중심점을 그대로 사용한다. 따라서 라인이 2개
+    검출된 경우 두 핑크 점은 각각의 bbox 중앙에 놓인다. 점이 n_bands개
+    이상이면 화면 아래쪽부터 균등하게 n_bands그룹으로 나누므로, 고정 높이
+    구간에 검출이 몰려도 항상 n_bands개의 대표점이 만들어진다.
+    """
     if not centroids:
         return []
     if n_bands <= 0:
-        return centroids
+        return sorted(centroids, key=lambda p: -p[1])
 
-    band_h = (roi_bottom - roi_top) / n_bands
+    sorted_points = sorted(centroids, key=lambda p: -p[1])
+    if len(sorted_points) <= n_bands:
+        return [(float(cx), float(cy)) for cx, cy in sorted_points]
+
     result = []
-    for b in range(n_bands):
-        y_lo = roi_top + b * band_h
-        y_hi = roi_top + (b + 1) * band_h
-        pts = [(cx, cy) for cx, cy in centroids if y_lo <= cy < y_hi]
-        if pts:
-            result.append((float(np.median([p[0] for p in pts])),
-                           float(np.mean([p[1] for p in pts]))))
-    result.sort(key=lambda p: -p[1])
+    for group in np.array_split(np.asarray(sorted_points, dtype=np.float64), n_bands):
+        result.append((float(np.median(group[:, 0])), float(np.mean(group[:, 1]))))
     return result
 
 
@@ -527,17 +440,25 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
     payload["target_x"] = float(target_x)
     payload["target_y"] = float(target_y)
     payload["follow_distance"] = float(math.hypot(target_x - robot_x, target_y - robot_y))
-    # 화면 위쪽을 진행 방향으로 보고, target이 오른쪽이면 +각도, 왼쪽이면 -각도
+    # 점 1개: 로봇 중심선과 '로봇 중심 -> 검출점' 선 사이의 부호 있는 각도.
+    # 화면 위쪽을 0도로 보고, 검출점이 오른쪽이면 +, 왼쪽이면 -이다.
     payload["follow_angle"] = float(math.degrees(math.atan2(target_x - robot_x, robot_y - target_y)))
 
-    # 점 2개 이상이면 직선 각도 계산
+    # 점 2개 이상이면 두 점을 이은 선과 로봇 중심선의 부호 있는 각도차 계산
     if point_count >= 2:
         p0 = line_points[0]  # 가까운 점
         p1 = line_points[1]  # 그다음 점
         dx = p1[0] - p0[0]
         dy_up = p0[1] - p1[1]  # 화면 위쪽 방향을 +로 보기 위함
-        payload["line_angle"] = float(math.degrees(math.atan2(dx, dy_up))) if abs(dy_up) > 1e-6 else 0.0
-        payload["tangent_angle"] = payload["line_angle"]
+        two_point_angle = float(math.degrees(math.atan2(dx, dy_up)))
+
+        # 점 2개에서는 line_angle을 사용하지 않고 follow_angle로만 전달한다.
+        if point_count == 2:
+            payload["follow_angle"] = two_point_angle
+        else:
+            # 점 3개 이상에서만 line_angle을 사용한다.
+            payload["line_angle"] = two_point_angle
+            payload["tangent_angle"] = payload["line_angle"]
 
     # 점 3개 이상이면 2차함수 a값과 두 번째 점 접선 각도 계산
     if point_count >= 3:
@@ -635,7 +556,6 @@ def make_vision_payload(dets: list[ObjectDetection], line_points: list[tuple[flo
     payload = make_line_payload(line_points, frame_w, frame_h)
     payload.update(best_object_payload(dets, cfg, "ball", frame_w, frame_h))
     payload.update(best_object_payload(dets, cfg, "hurdle", frame_w, frame_h))
-    payload = decide_line_payload(payload, frame_w, frame_h)
     return payload
 
 
@@ -684,7 +604,7 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
 
     # target point
     # 빨간 십자/선은 라인을 놓쳤을 때만 표시.
-    # 정상 주행/Follow_Point 상태에서는 화면을 가리지 않도록 표시하지 않음.
+    # 정상 주행/좌표 추종 상태에서는 화면을 가리지 않도록 표시하지 않음.
     show_target_marker = (
         int(payload.get("status", -1)) == LineStatus.Line_Lost
         or int(payload.get("point_count", 0)) <= 1
@@ -727,18 +647,29 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
     return vis
 
 
-def analyze_frame_yolo(frame: np.ndarray, model, cfg: dict) -> tuple[dict, np.ndarray]:
+def analyze_frame_yolo(
+    frame: np.ndarray,
+    model,
+    cfg: dict,
+    line_status_publisher: Optional[LineStatusPublisher] = None,
+) -> tuple[dict, np.ndarray]:
     h, w = frame.shape[:2]
     dets = yolo_detect(model, frame, cfg)
     raw_line_points, roi_box = get_yolo_line_points(dets, w, h, cfg)
 
     roi_top, roi_bottom, _roi_left, _roi_right = roi_box
-    band_points = band_sample(raw_line_points, roi_top, roi_bottom, cfg["n_bands"])
+    band_points = band_sample(
+        raw_line_points,
+        roi_top,
+        roi_bottom,
+        LINE_REPRESENTATIVE_POINT_COUNT,
+    )
 
     # band point가 있으면 그걸 알고리즘용 point로 사용. 없으면 raw point 사용.
     line_points = band_points if band_points else raw_line_points
     payload = make_vision_payload(dets, line_points, w, h, cfg)
     payload = LINE_SMOOTHER.smooth(payload, w, h)
+    payload = apply_line_status(payload, w, h, line_status_publisher)
 
     # 디버깅용으로 raw 개수도 같이 넣어둠. 알고리즘 쪽에서 안 쓰면 무시해도 됨.
     payload["raw_point_count"] = int(len(raw_line_points))
@@ -758,11 +689,6 @@ def main_ros2(ini_path: str = "settings.ini"):
     from std_msgs.msg import String
     from cv_bridge import CvBridge
 
-    try:
-        from msgs.msg import LineResult
-    except ImportError:
-        LineResult = None
-
     cfg = load_config(ini_path)
 
     class YoloVisionNode(Node):
@@ -775,26 +701,69 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.sub = self.create_subscription(Image, "/camera/image_raw", self.cb_image, 10)
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
-            self.pub_line_result = None
-            if LineResult is not None:
-                self.pub_line_result = self.create_publisher(LineResult, "line_result", 10)
-            else:
-                self.get_logger().warn("msgs.msg.LineResult를 import하지 못해서 line_result topic은 publish하지 않습니다.")
+            self.line_status_publisher = LineStatusPublisher(self)
+            self.ball_status_publisher = BallStatusPublisher(self)
+            self.hurdle_status_publisher = HurdleStatusPublisher(self)
+
+            self.declare_parameter("webcam_robot_center_x", 320.0)
+            self.declare_parameter("webcam_robot_center_y", 420.0)
+            self.declare_parameter("webcam_fov_x_deg", 60.0)
             self.get_logger().info(f"YoloVisionNode started cfg={ini_path}")
+
+        def publish_object_status(self, payload: dict, frame: np.ndarray):
+            frame_w = frame.shape[1]
+            robot_x = float(self.get_parameter("webcam_robot_center_x").value)
+            robot_y = float(self.get_parameter("webcam_robot_center_y").value)
+            fov_x_deg = float(self.get_parameter("webcam_fov_x_deg").value)
+
+            ball_detected = bool(payload.get("ball_detected", False))
+            ball_x = float(payload.get("ball_x", -1.0))
+            ball_y = float(payload.get("ball_y", -1.0))
+
+            if ball_detected and ball_x >= 0.0 and ball_y >= 0.0:
+                dx = ball_x - robot_x
+                dy = ball_y - robot_y
+                focal_px = frame_w / (
+                    2.0 * math.tan(math.radians(fov_x_deg) / 2.0)
+                )
+                angle_error = math.degrees(math.atan2(dx, focal_px))
+                distance_px = math.hypot(dx, dy)
+            else:
+                ball_detected = False
+                dx = None
+                angle_error = None
+                distance_px = None
+
+            ball_status, ball_angle = self.ball_status_publisher.publish_ball_status(
+                webcam_ball_detected=ball_detected,
+                webcam_ball_x_distance=dx,
+                webcam_ball_angle_error=angle_error,
+                webcam_ball_distance_px=distance_px,
+            )
+            hurdle_status, hurdle_angle = (
+                self.hurdle_status_publisher.publish_hurdle_status(
+                    hurdle_detected=bool(payload.get("hurdle_detected", False)),
+                )
+            )
+
+            payload["ball_status"] = int(ball_status)
+            payload["ball_status_angle"] = float(ball_angle)
+            payload["hurdle_status"] = int(hurdle_status)
+            payload["hurdle_status_angle"] = float(hurdle_angle)
 
         def cb_image(self, msg: Image):
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             if self.cfg["flip_vertical"]:
                 frame = cv2.flip(frame, 0)
 
-            payload, vis = analyze_frame_yolo(frame, self.model, self.cfg)
+            payload, vis = analyze_frame_yolo(
+                frame,
+                self.model,
+                self.cfg,
+                self.line_status_publisher,
+            )
+            self.publish_object_status(payload, frame)
             self.pub_state.publish(String(data=json.dumps(payload, ensure_ascii=False)))
-
-            if self.pub_line_result is not None:
-                msg_line = LineResult()
-                msg_line.status = int(payload["status"])
-                msg_line.angle = float(payload["angle"])
-                self.pub_line_result.publish(msg_line)
 
             debug_msg = self.bridge.cv2_to_imgmsg(vis, encoding="bgr8")
             debug_msg.header = msg.header

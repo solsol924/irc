@@ -1,0 +1,24 @@
+-- Install configuration: ""
+-- Execute custom install script
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/yolo_detector.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/realsense_ball_detector.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/ball_vision_fusion.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/line_status_publisher.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/ball_status_publisher.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/lib/vision/hurdle_status_publisher.py
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/config/settings.ini
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/package_run_dependencies/vision
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/parent_prefix_path/vision
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/ament_prefix_path.sh
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/ament_prefix_path.dsv
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/path.sh
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/environment/path.dsv
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.bash
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.sh
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.zsh
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/local_setup.dsv
+-- Symlinking: /home/solhee/irc/install/vision/share/vision/package.dsv
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/ament_index/resource_index/packages/vision
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/cmake/visionConfig.cmake
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/cmake/visionConfig-version.cmake
+-- Up-to-date symlink: /home/solhee/irc/install/vision/share/vision/package.xml

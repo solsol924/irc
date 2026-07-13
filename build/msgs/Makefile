@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/pyy/irc/src/msgs
+CMAKE_SOURCE_DIR = /home/solhee/irc/src/msgs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/pyy/irc/build/msgs
+CMAKE_BINARY_DIR = /home/solhee/irc/build/msgs
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -142,9 +142,9 @@ install/strip/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pyy/irc/build/msgs/CMakeFiles /home/pyy/irc/build/msgs//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/solhee/irc/build/msgs/CMakeFiles /home/solhee/irc/build/msgs//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pyy/irc/build/msgs/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/solhee/irc/build/msgs/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -315,17 +315,17 @@ msgs__rosidl_typesupport_cpp/fast:
 .PHONY : msgs__rosidl_typesupport_cpp/fast
 
 #=============================================================================
-# Target rules for targets named ament_cmake_python_copy_msgs
+# Target rules for targets named ament_cmake_python_symlink_msgs
 
 # Build rule for target.
-ament_cmake_python_copy_msgs: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_copy_msgs
-.PHONY : ament_cmake_python_copy_msgs
+ament_cmake_python_symlink_msgs: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ament_cmake_python_symlink_msgs
+.PHONY : ament_cmake_python_symlink_msgs
 
 # fast build rule for target.
-ament_cmake_python_copy_msgs/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_copy_msgs.dir/build.make CMakeFiles/ament_cmake_python_copy_msgs.dir/build
-.PHONY : ament_cmake_python_copy_msgs/fast
+ament_cmake_python_symlink_msgs/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ament_cmake_python_symlink_msgs.dir/build.make CMakeFiles/ament_cmake_python_symlink_msgs.dir/build
+.PHONY : ament_cmake_python_symlink_msgs/fast
 
 #=============================================================================
 # Target rules for targets named ament_cmake_python_build_msgs_egg
@@ -1451,7 +1451,7 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... test"
 	@echo "... ament_cmake_python_build_msgs_egg"
-	@echo "... ament_cmake_python_copy_msgs"
+	@echo "... ament_cmake_python_symlink_msgs"
 	@echo "... msgs"
 	@echo "... msgs__cpp"
 	@echo "... msgs__py"

@@ -1,0 +1,3 @@
+[0.382s] Invoking command in '/home/solhee/irc/build/decision': PYTHONPATH=/home/solhee/irc/build/decision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/solhee/irc/install/decision/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/solhee/irc/build/decision/build
+[0.534s] running develop
+[0.616s] Removing /home/solhee/irc/install/decision/lib/python3.10/site-packages/decision.egg-link (link to .)

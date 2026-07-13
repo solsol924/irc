@@ -1,0 +1,8 @@
+[0.387s] Invoking command in '/home/solhee/irc/build/decision': PYTHONPATH=/home/solhee/irc/build/decision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/solhee/irc/install/decision/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/solhee/irc/build/decision/build
+[0.516s] usage: setup.py [global_opts] cmd1 [cmd1_opts] [cmd2 [cmd2_opts] ...]
+[0.516s]    or: setup.py --help [cmd1 cmd2 ...]
+[0.516s]    or: setup.py --help-commands
+[0.516s]    or: setup.py cmd --help
+[0.516s] 
+[0.516s] error: option --uninstall not recognized
+[0.529s] Invoked command in '/home/solhee/irc/build/decision' returned '1': PYTHONPATH=/home/solhee/irc/build/decision/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/solhee/irc/install/decision/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py develop --uninstall --editable --build-directory /home/solhee/irc/build/decision/build

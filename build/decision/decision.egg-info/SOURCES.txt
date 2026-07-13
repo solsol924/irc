@@ -10,7 +10,11 @@ setup.py
 ../../build/decision/decision.egg-info/zip-safe
 decision/__init__.py
 decision/main_decision.py
+decision.egg-info/PKG-INFO
+decision.egg-info/SOURCES.txt
+decision.egg-info/dependency_links.txt
+decision.egg-info/entry_points.txt
+decision.egg-info/requires.txt
+decision.egg-info/top_level.txt
+decision.egg-info/zip-safe
 resource/decision
-test/test_copyright.py
-test/test_flake8.py
-test/test_pep257.py

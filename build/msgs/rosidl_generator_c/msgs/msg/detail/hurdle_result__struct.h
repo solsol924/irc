@@ -21,7 +21,7 @@ extern "C"
 typedef struct msgs__msg__HurdleResult
 {
   uint8_t status;
-  uint32_t angle;
+  float angle;
 } msgs__msg__HurdleResult;
 
 // Struct for a sequence of msgs__msg__HurdleResult.

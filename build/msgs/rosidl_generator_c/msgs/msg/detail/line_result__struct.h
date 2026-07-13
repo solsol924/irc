@@ -21,7 +21,7 @@ extern "C"
 typedef struct msgs__msg__LineResult
 {
   uint8_t status;
-  uint32_t angle;
+  float angle;
   bool follow_point;
 } msgs__msg__LineResult;
 

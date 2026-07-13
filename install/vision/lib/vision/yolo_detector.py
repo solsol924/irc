@@ -1,0 +1,1 @@
+/home/solhee/irc/src/vision/scripts/yolo_detector.py

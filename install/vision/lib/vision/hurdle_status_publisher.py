@@ -1,0 +1,1 @@
+/home/solhee/irc/src/vision/scripts/hurdle_status_publisher.py

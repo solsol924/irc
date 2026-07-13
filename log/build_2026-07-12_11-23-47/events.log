@@ -1,0 +1,264 @@
+[0.000000] (-) TimerEvent: {}
+[0.000101] (decision) JobQueued: {'identifier': 'decision', 'dependencies': OrderedDict()}
+[0.000175] (motion) JobQueued: {'identifier': 'motion', 'dependencies': OrderedDict()}
+[0.000387] (msgs) JobQueued: {'identifier': 'msgs', 'dependencies': OrderedDict()}
+[0.000456] (vision) JobQueued: {'identifier': 'vision', 'dependencies': OrderedDict([('msgs', '/home/solhee/irc/install/msgs')])}
+[0.000468] (robot_bringup) JobQueued: {'identifier': 'robot_bringup', 'dependencies': OrderedDict([('decision', '/home/solhee/irc/install/decision'), ('motion', '/home/solhee/irc/install/motion'), ('msgs', '/home/solhee/irc/install/msgs'), ('vision', '/home/solhee/irc/install/vision')])}
+[0.000537] (msgs) JobStarted: {'identifier': 'msgs'}
+[0.002419] (decision) JobStarted: {'identifier': 'decision'}
+[0.004502] (motion) JobStarted: {'identifier': 'motion'}
+[0.006146] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'cmake'}
+[0.006614] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'build'}
+[0.007071] (msgs) Command: {'cmd': ['/usr/bin/cmake', '--build', '/home/solhee/irc/build/msgs', '--', '-j12', '-l12'], 'cwd': '/home/solhee/irc/build/msgs', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '2'), ('HOME', '/home/solhee'), ('DESKTOP_SESSION', 'ubuntu'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'solhee'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('DISPLAY', ':1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:f3469386-627c-4b49-8854-a79bb0562730'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/msgs'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800')]), 'shell': False}
+[0.099907] (-) TimerEvent: {}
+[0.156287] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_generator_c\x1b[0m\n'}
+[0.156642] (msgs) StdoutLine: {'line': b'[  1%] Built target msgs__cpp\n'}
+[0.156771] (msgs) StdoutLine: {'line': b'[ 12%] Built target msgs__rosidl_generator_c\n'}
+[0.156896] (msgs) StdoutLine: {'line': b'[ 12%] Built target ament_cmake_python_symlink_msgs\n'}
+[0.156999] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_cpp\x1b[0m\n'}
+[0.157058] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_cpp\x1b[0m\n'}
+[0.157114] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_cpp\x1b[0m\n'}
+[0.157323] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_c\x1b[0m\n'}
+[0.157431] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_c\x1b[0m\n'}
+[0.157500] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_c\x1b[0m\n'}
+[0.157718] (msgs) StdoutLine: {'line': b'[ 23%] Built target msgs__rosidl_typesupport_introspection_c\n'}
+[0.158156] (msgs) StdoutLine: {'line': b'[ 34%] Built target msgs__rosidl_typesupport_fastrtps_cpp\n'}
+[0.158350] (msgs) StdoutLine: {'line': b'[ 46%] Built target msgs__rosidl_typesupport_c\n'}
+[0.158795] (msgs) StdoutLine: {'line': b'[ 57%] Built target msgs__rosidl_typesupport_introspection_cpp\n'}
+[0.158971] (msgs) StdoutLine: {'line': b'[ 79%] Built target msgs__rosidl_typesupport_cpp\n'}
+[0.159226] (msgs) StdoutLine: {'line': b'[ 79%] Built target msgs__rosidl_typesupport_fastrtps_c\n'}
+[0.159339] (msgs) StdoutLine: {'line': b'[ 79%] Built target msgs\n'}
+[0.159377] (msgs) StdoutLine: {'line': b'[ 80%] Built target msgs__py\n'}
+[0.159411] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_generator_py\x1b[0m\n'}
+[0.159444] (msgs) StdoutLine: {'line': b'[ 90%] Built target msgs__rosidl_generator_py\n'}
+[0.159477] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_introspection_c__pyext\x1b[0m\n'}
+[0.159510] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_fastrtps_c__pyext\x1b[0m\n'}
+[0.159543] (msgs) StdoutLine: {'line': b'\x1b[35m\x1b[1mConsolidate compiler generated dependencies of target msgs__rosidl_typesupport_c__pyext\x1b[0m\n'}
+[0.159576] (msgs) StdoutLine: {'line': b'[100%] Built target msgs__rosidl_typesupport_introspection_c__pyext\n'}
+[0.159609] (msgs) StdoutLine: {'line': b'[100%] Built target msgs__rosidl_typesupport_fastrtps_c__pyext\n'}
+[0.159769] (msgs) StdoutLine: {'line': b'[100%] Built target msgs__rosidl_typesupport_c__pyext\n'}
+[0.159803] (msgs) StdoutLine: {'line': b'running egg_info\n'}
+[0.159835] (motion) JobProgress: {'identifier': 'motion', 'progress': 'cmake'}
+[0.159847] (motion) Command: {'cmd': ['/usr/bin/cmake', '/home/solhee/irc/src/motion', '-DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/motion'], 'cwd': '/home/solhee/irc/build/motion', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '2'), ('HOME', '/home/solhee'), ('DESKTOP_SESSION', 'ubuntu'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'solhee'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('DISPLAY', ':1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:f3469386-627c-4b49-8854-a79bb0562730'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/motion'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800')]), 'shell': False}
+[0.162659] (msgs) StdoutLine: {'line': b'writing msgs.egg-info/PKG-INFO\n'}
+[0.162938] (msgs) StdoutLine: {'line': b'writing dependency_links to msgs.egg-info/dependency_links.txt\n'}
+[0.163115] (msgs) StdoutLine: {'line': b'writing top-level names to msgs.egg-info/top_level.txt\n'}
+[0.165319] (motion) StdoutLine: {'line': b'-- Found rclcpp: 16.0.18 (/opt/ros/humble/share/rclcpp/cmake)\n'}
+[0.182433] (msgs) StdoutLine: {'line': b"reading manifest file 'msgs.egg-info/SOURCES.txt'\n"}
+[0.183122] (msgs) StdoutLine: {'line': b"writing manifest file 'msgs.egg-info/SOURCES.txt'\n"}
+[0.200008] (-) TimerEvent: {}
+[0.201216] (msgs) StdoutLine: {'line': b'[100%] Built target ament_cmake_python_build_msgs_egg\n'}
+[0.207863] (msgs) CommandEnded: {'returncode': 0}
+[0.208386] (msgs) JobProgress: {'identifier': 'msgs', 'progress': 'install'}
+[0.213227] (msgs) Command: {'cmd': ['/usr/bin/cmake', '--install', '/home/solhee/irc/build/msgs'], 'cwd': '/home/solhee/irc/build/msgs', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '2'), ('HOME', '/home/solhee'), ('DESKTOP_SESSION', 'ubuntu'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'solhee'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('DISPLAY', ':1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:f3469386-627c-4b49-8854-a79bb0562730'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/msgs'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800')]), 'shell': False}
+[0.217897] (msgs) StdoutLine: {'line': b'-- Install configuration: ""\n'}
+[0.218269] (msgs) StdoutLine: {'line': b'-- Execute custom install script\n'}
+[0.218414] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/rosidl_interfaces/msgs\n'}
+[0.218680] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/ball_result.h\n'}
+[0.218761] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__functions.h\n'}
+[0.218828] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__struct.h\n'}
+[0.218900] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__type_support.h\n'}
+[0.218959] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__functions.h\n'}
+[0.219016] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__struct.h\n'}
+[0.219080] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__type_support.h\n'}
+[0.219141] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__functions.h\n'}
+[0.219198] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__struct.h\n'}
+[0.219262] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__type_support.h\n'}
+[0.219333] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__functions.h\n'}
+[0.219399] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__struct.h\n'}
+[0.219457] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__type_support.h\n'}
+[0.219513] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__functions.h\n'}
+[0.219574] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__struct.h\n'}
+[0.219633] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__type_support.h\n'}
+[0.219681] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/hurdle_result.h\n'}
+[0.219737] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/line_result.h\n'}
+[0.219801] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_command.h\n'}
+[0.219849] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_end.h\n'}
+[0.219895] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_generator_c__visibility_control.h\n'}
+[0.219943] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/library_path.sh\n'}
+[0.219988] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/library_path.dsv\n'}
+[0.220042] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_fastrtps_c.h\n'}
+[0.220100] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_fastrtps_c.h\n'}
+[0.220160] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_fastrtps_c.h\n'}
+[0.220219] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_fastrtps_c.h\n'}
+[0.220276] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_fastrtps_c.h\n'}
+[0.220333] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h\n'}
+[0.220470] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_introspection_c.h\n'}
+[0.220532] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_introspection_c.h\n'}
+[0.220586] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_introspection_c.h\n'}
+[0.220648] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_introspection_c.h\n'}
+[0.220707] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_introspection_c.h\n'}
+[0.220765] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h\n'}
+[0.220991] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/ball_result.hpp\n'}
+[0.221060] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__builder.hpp\n'}
+[0.221127] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__struct.hpp\n'}
+[0.221185] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__traits.hpp\n'}
+[0.221243] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__type_support.hpp\n'}
+[0.221308] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__builder.hpp\n'}
+[0.221373] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__struct.hpp\n'}
+[0.221430] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__traits.hpp\n'}
+[0.221495] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__type_support.hpp\n'}
+[0.221559] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__builder.hpp\n'}
+[0.221617] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__struct.hpp\n'}
+[0.221673] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__traits.hpp\n'}
+[0.221737] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__type_support.hpp\n'}
+[0.221795] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__builder.hpp\n'}
+[0.221853] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__struct.hpp\n'}
+[0.221916] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__traits.hpp\n'}
+[0.221975] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__type_support.hpp\n'}
+[0.222040] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__builder.hpp\n'}
+[0.222099] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__struct.hpp\n'}
+[0.222156] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__traits.hpp\n'}
+[0.222203] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__type_support.hpp\n'}
+[0.222252] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/hurdle_result.hpp\n'}
+[0.222305] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/line_result.hpp\n'}
+[0.222351] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_command.hpp\n'}
+[0.222408] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/motion_end.hpp\n'}
+[0.222466] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_generator_cpp__visibility_control.hpp\n'}
+[0.222524] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[0.222587] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[0.222643] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[0.222691] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[0.222739] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_fastrtps_cpp.hpp\n'}
+[0.222783] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h\n'}
+[0.222836] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/ball_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[0.222890] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/hurdle_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[0.222948] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/line_result__rosidl_typesupport_introspection_cpp.hpp\n'}
+[0.223011] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_command__rosidl_typesupport_introspection_cpp.hpp\n'}
+[0.223060] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/include/msgs/msgs/msg/detail/motion_end__rosidl_typesupport_introspection_cpp.hpp\n'}
+[0.223118] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/pythonpath.sh\n'}
+[0.223175] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/pythonpath.dsv\n'}
+[0.223292] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/PKG-INFO\n'}
+[0.223360] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/SOURCES.txt\n'}
+[0.223423] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/dependency_links.txt\n'}
+[0.223481] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs-0.0.0-py3.10.egg-info/top_level.txt\n'}
+[0.223765] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/__init__.py\n'}
+[0.223839] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_c.c\n'}
+[0.223900] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_fastrtps_c.c\n'}
+[0.223960] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/_msgs_s.ep.rosidl_typesupport_introspection_c.c\n'}
+[0.224027] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/libmsgs__rosidl_generator_py.so\n'}
+[0.224082] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/__init__.py\n'}
+[0.224140] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_ball_result.py\n'}
+[0.224203] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_ball_result_s.c\n'}
+[0.224261] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_hurdle_result.py\n'}
+[0.224325] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_hurdle_result_s.c\n'}
+[0.224373] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_line_result.py\n'}
+[0.224433] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_line_result_s.c\n'}
+[0.224497] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_command.py\n'}
+[0.224556] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_command_s.c\n'}
+[0.224615] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_end.py\n'}
+[0.224680] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg/_motion_end_s.c\n'}
+[0.224732] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.224781] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.224839] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.224887] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.224943] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.225047] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so\n'}
+[0.225126] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/LineResult.idl\n'}
+[0.225195] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/BallResult.idl\n'}
+[0.225261] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/HurdleResult.idl\n'}
+[0.225331] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionEnd.idl\n'}
+[0.225395] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionCommand.idl\n'}
+[0.225476] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/LineResult.msg\n'}
+[0.225563] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/BallResult.msg\n'}
+[0.225662] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/HurdleResult.msg\n'}
+[0.225776] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionEnd.msg\n'}
+[0.225889] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/msg/MotionCommand.msg\n'}
+[0.225971] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/package_run_dependencies/msgs\n'}
+[0.226046] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/parent_prefix_path/msgs\n'}
+[0.226120] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/ament_prefix_path.sh\n'}
+[0.226198] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/ament_prefix_path.dsv\n'}
+[0.226264] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/path.sh\n'}
+[0.226342] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/environment/path.dsv\n'}
+[0.226404] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.bash\n'}
+[0.226472] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.sh\n'}
+[0.226535] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.zsh\n'}
+[0.226597] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/local_setup.dsv\n'}
+[0.226651] (msgs) StdoutLine: {'line': b'-- Symlinking: /home/solhee/irc/install/msgs/share/msgs/package.dsv\n'}
+[0.231790] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/ament_index/resource_index/packages/msgs\n'}
+[0.231964] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake-extras.cmake\n'}
+[0.232036] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_dependencies-extras.cmake\n'}
+[0.232121] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_include_directories-extras.cmake\n'}
+[0.232176] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_libraries-extras.cmake\n'}
+[0.232243] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/ament_cmake_export_targets-extras.cmake\n'}
+[0.232319] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake\n'}
+[0.232384] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake\n'}
+[0.232466] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/msgsConfig.cmake\n'}
+[0.232525] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/cmake/msgsConfig-version.cmake\n'}
+[0.232588] (msgs) StdoutLine: {'line': b'-- Up-to-date symlink: /home/solhee/irc/install/msgs/share/msgs/package.xml\n'}
+[0.232672] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_generator_c.so\n'}
+[0.232825] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_fastrtps_c.so\n'}
+[0.232949] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_introspection_c.so\n'}
+[0.233066] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_c.so\n'}
+[0.233180] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_fastrtps_cpp.so\n'}
+[0.233307] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_introspection_cpp.so\n'}
+[0.233422] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_typesupport_cpp.so\n'}
+[0.250795] (motion) StderrLine: {'line': b'Traceback (most recent call last):\n'}
+[0.250960] (motion) StderrLine: {'line': b'  File "/opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py", line 21, in <module>\n'}
+[0.251031] (motion) StderrLine: {'line': b'    from ament_package.templates import get_environment_hook_template_path\n'}
+[0.251085] (motion) StderrLine: {'line': b"ModuleNotFoundError: No module named 'ament_package'\n"}
+[0.252562] (msgs) StdoutLine: {'line': b"Listing '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs'...\n"}
+[0.252685] (msgs) StdoutLine: {'line': b"Listing '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages/msgs/msg'...\n"}
+[0.255572] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/lib/libmsgs__rosidl_generator_py.so\n'}
+[0.255722] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cExport.cmake\n'}
+[0.255826] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cExport-noconfig.cmake\n'}
+[0.255889] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cExport.cmake\n'}
+[0.255975] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake\n'}
+[0.256074] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cExport.cmake\n'}
+[0.256161] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake\n'}
+[0.256234] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cExport.cmake\n'}
+[0.256298] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cExport-noconfig.cmake\n'}
+[0.256356] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_cppExport.cmake\n'}
+[0.256410] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cppExport.cmake\n'}
+[0.256463] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake\n'}
+[0.256517] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cppExport.cmake\n'}
+[0.256569] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake\n'}
+[0.256621] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cppExport.cmake\n'}
+[0.256672] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/msgs__rosidl_typesupport_cppExport-noconfig.cmake\n'}
+[0.256724] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_pyExport.cmake\n'}
+[0.256775] (msgs) StdoutLine: {'line': b'-- Up-to-date: /home/solhee/irc/install/msgs/share/msgs/cmake/export_msgs__rosidl_generator_pyExport-noconfig.cmake\n'}
+[0.257620] (msgs) CommandEnded: {'returncode': 0}
+[0.258120] (motion) StderrLine: {'line': b'\x1b[31mCMake Error at /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_package_templates-extras.cmake:41 (message):\n'}
+[0.258285] (motion) StderrLine: {'line': b'  execute_process(/usr/bin/python3\n'}
+[0.258390] (motion) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py\n'}
+[0.258451] (motion) StderrLine: {'line': b'  /home/solhee/irc/build/motion/ament_cmake_package_templates/templates.cmake)\n'}
+[0.258656] (motion) StderrLine: {'line': b'  returned error code 1\n'}
+[0.258875] (motion) StderrLine: {'line': b'Call Stack (most recent call first):\n'}
+[0.258991] (motion) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_coreConfig.cmake:41 (include)\n'}
+[0.259086] (motion) StderrLine: {'line': b'  /opt/ros/humble/share/rclcpp/cmake/ament_cmake_export_include_directories-extras.cmake:8 (find_package)\n'}
+[0.259179] (motion) StderrLine: {'line': b'  /opt/ros/humble/share/rclcpp/cmake/rclcppConfig.cmake:41 (include)\n'}
+[0.259243] (motion) StderrLine: {'line': b'  CMakeLists.txt:10 (find_package)\n'}
+[0.259368] (motion) StderrLine: {'line': b'\n'}
+[0.259440] (motion) StderrLine: {'line': b'\x1b[0m\n'}
+[0.259494] (motion) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[0.259701] (motion) StdoutLine: {'line': b'See also "/home/solhee/irc/build/motion/CMakeFiles/CMakeOutput.log".\n'}
+[0.270367] (msgs) JobEnded: {'identifier': 'msgs', 'rc': 0}
+[0.271326] (vision) JobStarted: {'identifier': 'vision'}
+[0.271964] (motion) CommandEnded: {'returncode': 1}
+[0.273633] (vision) JobProgress: {'identifier': 'vision', 'progress': 'cmake'}
+[0.274080] (vision) Command: {'cmd': ['/usr/bin/cmake', '/home/solhee/irc/src/vision', '-DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/vision'], 'cwd': '/home/solhee/irc/build/vision', 'env': OrderedDict([('LESSOPEN', '| /usr/bin/lesspipe %s'), ('LANGUAGE', 'en'), ('USER', 'solhee'), ('LC_TIME', 'ko_KR.UTF-8'), ('XDG_SESSION_TYPE', 'x11'), ('SHLVL', '2'), ('LD_LIBRARY_PATH', '/home/solhee/irc/install/msgs/lib'), ('HOME', '/home/solhee'), ('DESKTOP_SESSION', 'ubuntu'), ('GNOME_SHELL_SESSION_MODE', 'ubuntu'), ('GTK_MODULES', 'gail:atk-bridge'), ('LC_MONETARY', 'ko_KR.UTF-8'), ('SYSTEMD_EXEC_PID', '2156'), ('DBUS_SESSION_BUS_ADDRESS', 'unix:path=/run/user/1001/bus'), ('COLORTERM', 'truecolor'), ('TERMINATOR_DBUS_NAME', 'net.tenshu.Terminator23558193cd9818af7fe4d2c2f5bd9d00f'), ('GTK_IM_MODULE', 'ibus'), ('LOGNAME', 'solhee'), ('_', '/usr/bin/colcon'), ('XDG_SESSION_CLASS', 'user'), ('USERNAME', 'solhee'), ('TERM', 'xterm-256color'), ('GNOME_DESKTOP_SESSION_ID', 'this-is-deprecated'), ('WINDOWPATH', '2'), ('PATH', '/home/solhee/.local/bin:/home/solhee/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin'), ('SESSION_MANAGER', 'local/solhee-laptop:@/tmp/.ICE-unix/2129,unix/solhee-laptop:/tmp/.ICE-unix/2129'), ('PAPERSIZE', 'a4'), ('XDG_MENU_PREFIX', 'gnome-'), ('LC_ADDRESS', 'ko_KR.UTF-8'), ('GNOME_TERMINAL_SCREEN', '/org/gnome/Terminal/screen/e83450d5_9a23_4613_8500_870b4e7739d0'), ('XDG_RUNTIME_DIR', '/run/user/1001'), ('DISPLAY', ':1'), ('TERMINATOR_DBUS_PATH', '/net/tenshu/Terminator2'), ('LANG', 'en_US.UTF-8'), ('XDG_CURRENT_DESKTOP', 'ubuntu:GNOME'), ('IBUS_DISABLE_SNOOPER', '1'), ('LC_TELEPHONE', 'ko_KR.UTF-8'), ('XMODIFIERS', '@im=ibus'), ('XDG_SESSION_DESKTOP', 'ubuntu'), ('XAUTHORITY', '/run/user/1001/gdm/Xauthority'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GNOME_TERMINAL_SERVICE', ':1.95'), ('SSH_AGENT_LAUNCHER', 'gnome-keyring'), ('SSH_AUTH_SOCK', '/run/user/1001/keyring/ssh'), ('AMENT_PREFIX_PATH', '/home/solhee/irc/install/msgs'), ('SHELL', '/bin/bash'), ('LC_NAME', 'ko_KR.UTF-8'), ('TERMINATOR_UUID', 'urn:uuid:f3469386-627c-4b49-8854-a79bb0562730'), ('QT_ACCESSIBILITY', '1'), ('GDMSESSION', 'ubuntu'), ('LESSCLOSE', '/usr/bin/lesspipe %s %s'), ('LC_MEASUREMENT', 'ko_KR.UTF-8'), ('GPG_AGENT_INFO', '/run/user/1001/gnupg/S.gpg-agent:0:1'), ('LC_IDENTIFICATION', 'ko_KR.UTF-8'), ('QT_IM_MODULE', 'ibus'), ('PWD', '/home/solhee/irc/build/vision'), ('LC_ALL', 'en_US.UTF-8'), ('XDG_CONFIG_DIRS', '/etc/xdg/xdg-ubuntu:/etc/xdg'), ('XDG_DATA_DIRS', '/usr/share/ubuntu:/usr/share/gnome:/usr/local/share/:/usr/share/:/var/lib/snapd/desktop'), ('LC_NUMERIC', 'ko_KR.UTF-8'), ('PYTHONPATH', '/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages'), ('LC_PAPER', 'ko_KR.UTF-8'), ('COLCON', '1'), ('VTE_VERSION', '6800'), ('CMAKE_PREFIX_PATH', '/home/solhee/irc/install/msgs')]), 'shell': False}
+[0.281223] (motion) JobEnded: {'identifier': 'motion', 'rc': 1}
+[0.281581] (vision) StdoutLine: {'line': b'-- Found ament_cmake: 1.3.13 (/opt/ros/humble/share/ament_cmake/cmake)\n'}
+[0.300090] (-) TimerEvent: {}
+[0.365539] (vision) StderrLine: {'line': b'Traceback (most recent call last):\n'}
+[0.365682] (vision) StderrLine: {'line': b'  File "/opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py", line 21, in <module>\n'}
+[0.365726] (vision) StderrLine: {'line': b'    from ament_package.templates import get_environment_hook_template_path\n'}
+[0.365758] (vision) StderrLine: {'line': b"ModuleNotFoundError: No module named 'ament_package'\n"}
+[0.367071] (decision) JobEnded: {'identifier': 'decision', 'rc': 'SIGINT'}
+[0.372660] (vision) StderrLine: {'line': b'\x1b[31mCMake Error at /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_package_templates-extras.cmake:41 (message):\n'}
+[0.372780] (vision) StderrLine: {'line': b'  execute_process(/usr/bin/python3\n'}
+[0.372839] (vision) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/package_templates/templates_2_cmake.py\n'}
+[0.372890] (vision) StderrLine: {'line': b'  /home/solhee/irc/build/vision/ament_cmake_package_templates/templates.cmake)\n'}
+[0.372940] (vision) StderrLine: {'line': b'  returned error code 1\n'}
+[0.372988] (vision) StderrLine: {'line': b'Call Stack (most recent call first):\n'}
+[0.373038] (vision) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake_core/cmake/ament_cmake_coreConfig.cmake:41 (include)\n'}
+[0.373116] (vision) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake/cmake/ament_cmake_export_dependencies-extras.cmake:15 (find_package)\n'}
+[0.373168] (vision) StderrLine: {'line': b'  /opt/ros/humble/share/ament_cmake/cmake/ament_cmakeConfig.cmake:41 (include)\n'}
+[0.373211] (vision) StderrLine: {'line': b'  CMakeLists.txt:9 (find_package)\n'}
+[0.373251] (vision) StderrLine: {'line': b'\n'}
+[0.373299] (vision) StderrLine: {'line': b'\x1b[0m\n'}
+[0.373339] (vision) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[0.373388] (vision) StdoutLine: {'line': b'See also "/home/solhee/irc/build/vision/CMakeFiles/CMakeOutput.log".\n'}
+[0.374763] (vision) JobEnded: {'identifier': 'vision', 'rc': 'SIGINT'}
+[0.385113] (robot_bringup) JobSkipped: {'identifier': 'robot_bringup'}
+[0.385158] (-) EventReactorShutdown: {}

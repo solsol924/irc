@@ -1,1 +1,1 @@
-bool motion_end
+/home/solhee/irc/src/msgs/msg/MotionEnd.msg

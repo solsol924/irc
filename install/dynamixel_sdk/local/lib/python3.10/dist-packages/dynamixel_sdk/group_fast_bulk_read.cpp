@@ -1,1 +1,0 @@
-/home/pyy/irc/src/DynamixelSDK/ros/dynamixel_sdk/src/dynamixel_sdk/group_fast_bulk_read.cpp

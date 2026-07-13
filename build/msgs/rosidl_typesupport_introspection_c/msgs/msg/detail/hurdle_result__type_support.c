@@ -51,7 +51,7 @@ static rosidl_typesupport_introspection_c__MessageMember msgs__msg__HurdleResult
   },
   {
     "angle",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_UINT32,  // type
+    rosidl_typesupport_introspection_c__ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array

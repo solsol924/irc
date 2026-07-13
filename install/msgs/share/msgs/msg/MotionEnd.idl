@@ -1,12 +1,1 @@
-// generated from rosidl_adapter/resource/msg.idl.em
-// with input from msgs/msg/MotionEnd.msg
-// generated code does not contain a copyright notice
-
-
-module msgs {
-  module msg {
-    struct MotionEnd {
-      boolean motion_end;
-    };
-  };
-};
+/home/solhee/irc/build/msgs/rosidl_adapter/msgs/msg/MotionEnd.idl

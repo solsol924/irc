@@ -33,6 +33,13 @@ class Motion:
     
     # 모션 번호 나열하기
 
+
+MOTION_NAME = {
+    value: name
+    for name, value in vars(Motion).items()
+    if not name.startswith('_') and isinstance(value, int)
+}
+
 class Ball:
     Ball_None = 99
     Ball_Forward = Motion.Forward
@@ -104,6 +111,7 @@ class MainDecision(Node):
         
         #최근 5개의 데이터를 저장하는 버퍼
         self.line_buffer = deque(maxlen=5)
+        self.line_follow_point_buffer = deque(maxlen=5)
         self.ball_buffer = deque(maxlen=5)
         self.ball_in_hand_buffer = deque(maxlen=5)
         self.hurdle_buffer = deque(maxlen=5)
@@ -125,6 +133,7 @@ class MainDecision(Node):
     def LineResultCallback(self, line_msg:LineResult):
         #최신 데이터 갱신
         self.line_buffer.append(line_msg.status)
+        self.line_follow_point_buffer.append(line_msg.follow_point)
         if self.motion_end == True:
             if len (self.line_buffer) >= 3:
                 # Counter를 사용해 가장 빈도수가 높은 값 추출
@@ -132,11 +141,17 @@ class MainDecision(Node):
                 most_common_status = counts.most_common(1)[0][0]
                 #다수결 따라 라인 status 결정
                 self.line_status = most_common_status
+                follow_counts = Counter(self.line_follow_point_buffer)
+                self.line_follow_point = follow_counts.most_common(1)[0][0]
                 self.angle = line_msg.angle
                 #라인 데이터 ready
                 self.line_data = True
                 # line result 상태, 각도를 로그로 출력
-                self.get_logger().info(f"[LineResult] status: {line_msg.status}, angle: {line_msg.angle}")
+                self.get_logger().info(
+                    f"[LineResult] status: {line_msg.status}, "
+                    f"angle: {line_msg.angle}, "
+                    f"follow_point: {self.line_follow_point}"
+                )
                 self.Decision()
             else:
                 self.get_logger().info(f"not enough data in line buffer")
@@ -580,7 +595,10 @@ class MainDecision(Node):
             motion_msg.command = Motion.Forward_4step
         
         self.motion_pub.publish(motion_msg)
-        self.get_logger().info(f"motion command: {motion_msg.command}")
+        motion_name = MOTION_NAME.get(motion_msg.command, 'Unknown')
+        self.get_logger().info(
+            f"[MotionCommand] command={motion_msg.command}, motion={motion_name}"
+        )
         
         self.line_data = False
         self.ball_data = False
@@ -588,6 +606,7 @@ class MainDecision(Node):
         #test mode일 때는 true 로 유지
         self.motion_end = True if self.test_mode else False
         self.line_buffer.clear()
+        self.line_follow_point_buffer.clear()
         self.ball_buffer.clear()
         self.ball_in_hand_buffer.clear()
         self.hurdle_buffer.clear()

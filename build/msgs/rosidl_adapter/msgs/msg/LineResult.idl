@@ -8,7 +8,7 @@ module msgs {
     struct LineResult {
       uint8 status;
 
-      uint32 angle;
+      float angle;
 
       boolean follow_point;
     };

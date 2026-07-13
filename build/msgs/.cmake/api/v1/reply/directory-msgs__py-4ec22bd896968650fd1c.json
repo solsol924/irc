@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "msgs__py",
+		"source" : "/home/solhee/irc/build/msgs/msgs__py"
+	}
+}

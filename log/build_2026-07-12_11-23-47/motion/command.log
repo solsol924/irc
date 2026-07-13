@@ -1,0 +1,2 @@
+Invoking command in '/home/solhee/irc/build/motion': /usr/bin/cmake /home/solhee/irc/src/motion -DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/motion
+Invoked command in '/home/solhee/irc/build/motion' returned '1': /usr/bin/cmake /home/solhee/irc/src/motion -DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/motion

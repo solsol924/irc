@@ -1,8 +1,8 @@
-# Install script for directory: /home/pyy/irc/build/msgs/msgs__py
+# Install script for directory: /home/solhee/irc/build/msgs/msgs__py
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/home/pyy/irc/install/msgs")
+  set(CMAKE_INSTALL_PREFIX "/home/solhee/irc/install/msgs")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
