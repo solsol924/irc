@@ -16,11 +16,9 @@ publish 값:
 - follow_distance
 - ball / hurdle detection 정보
 
-공/허들 fusion 관련 주의:
-- 이 파일은 웹캠 YOLO의 ball/hurdle 검출 필드를 /line_tracker/state로 전달합니다.
-- ball_result는 ball_vision_fusion.py가 담당합니다.
-- hurdle_result는 hurdle_vision_fusion.py가 담당하도록 기본값에서 직접 발행을 끕니다.
-  YOLO 단독 모드가 필요할 때만 settings.ini의 publish_hurdle_result=true를 사용하세요.
+공 관련 주의:
+- 이 파일은 웹캠 YOLO의 ball_detected/ball_x/ball_y만 /line_tracker/state로 전달합니다.
+- RealSense와의 결합 및 ball_result 발행은 ball_vision_fusion.py가 담당합니다.
 """
 
 import configparser
@@ -245,8 +243,6 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "show_window": True,
         "save_video": "",
         "print_every_n_frames": 5,
-        # Fusion 노드와 hurdle_result 중복 발행을 막기 위해 기본 False.
-        "publish_hurdle_result": False,
     }
 
     p = Path(ini_path)
@@ -295,7 +291,6 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "show_window": gb("output", "show_window", defaults["show_window"]),
         "save_video": gs("output", "save_video", defaults["save_video"]),
         "print_every_n_frames": gi("output", "print_every_n_frames", defaults["print_every_n_frames"]),
-        "publish_hurdle_result": gb("output", "publish_hurdle_result", defaults["publish_hurdle_result"]),
     })
     return cfg
 
@@ -788,37 +783,28 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
             self.line_status_publisher = LineStatusPublisher(self)
-            self.hurdle_status_publisher = (
-                HurdleStatusPublisher(self)
-                if self.cfg.get("publish_hurdle_result", False)
-                else None
-            )
+            self.hurdle_status_publisher = HurdleStatusPublisher(self)
 
             # 공의 최종 BallStatus 판단은 별도 ball_vision_fusion.py가 담당한다.
             # 이 노드는 /line_tracker/state에 ball_detected, ball_x, ball_y,
             # ball_conf, ball_bbox만 담아 웹캠 Vision 결과를 전달한다.
             self.get_logger().info(f"YoloVisionNode started cfg={ini_path}")
-            self.get_logger().info(
-                "YOLO direct hurdle_result publish="
-                f"{bool(self.hurdle_status_publisher is not None)}"
-            )
 
         def publish_hurdle_status(self, payload: dict):
-            """YOLO 단독 모드에서만 hurdle_result를 직접 발행한다."""
-            if self.hurdle_status_publisher is None:
-                # hurdle_detected/x/y/conf/bbox는 그대로 /line_tracker/state에 남는다.
-                # 최종 hurdle_result는 hurdle_vision_fusion.py가 발행한다.
-                payload["hurdle_result_publisher"] = "hurdle_vision_fusion"
-                return
+            """
+            허들 상태만 이 노드에서 발행한다.
 
+            공 상태는 RealSense와 웹캠을 동시에 사용해야 하므로
+            별도 ball_vision_fusion.py에서 ball_result를 발행한다.
+            """
             hurdle_status, hurdle_angle = (
                 self.hurdle_status_publisher.publish_hurdle_status(
                     hurdle_detected=bool(payload.get("hurdle_detected", False)),
                 )
             )
+
             payload["hurdle_status"] = int(hurdle_status)
             payload["hurdle_status_angle"] = float(hurdle_angle)
-            payload["hurdle_result_publisher"] = "yolo_vision"
 
         def cb_image(self, msg: Image):
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")

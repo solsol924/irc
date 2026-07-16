@@ -15,7 +15,7 @@ public:
     double All_Theta[NUMBER_OF_JOINTS]; 
 
     void SetCurrentTheta(const Eigen::VectorXd& theta);
-    void SelectMotion(int go, double transition_time = 0.5);
+    void SelectMotion(int go);
     void Write_All_Theta();
     bool IsMoving();
 };

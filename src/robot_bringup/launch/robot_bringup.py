@@ -150,22 +150,6 @@ def generate_launch_description():
             Node(
                 condition=IfCondition(use_vision),
                 package='vision',
-                executable='realsense_ball_detector.py',
-                name='basketball_detector',
-                output='screen',
-                emulate_tty=True,
-                remappings=[
-                    ('/camera/color/image_raw', '/camera/camera/color/image_raw'),
-                    (
-                        '/camera/aligned_depth_to_color/image_raw',
-                        '/camera/camera/aligned_depth_to_color/image_raw',
-                    ),
-                ],
-                arguments=['--ros-args', '--log-level', 'info'],
-            ),
-            Node(
-                condition=IfCondition(use_vision),
-                package='vision',
                 executable='ball_vision_fusion.py',
                 name='ball_vision_fusion',
                 output='screen',

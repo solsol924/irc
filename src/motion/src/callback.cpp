@@ -19,12 +19,12 @@ void Callback::SetCurrentTheta(const Eigen::VectorXd& theta)
 // MAIN.cpp에서 아래와 같이 사용됩니다.
 // VectorXd validated_theta = dxl_port.GetThetaAct();  다이나믹셀에서 현재각 읽기
 // callback.SetCurrentTheta(validated_theta);  All_Theta에 현재각 넣기
-// callback.SelectMotion(0, 3.0);  현재각 -> 기본자세 3초 이동
+// callback.SelectMotion(0);  현재각 -> 기본자세 SDK에 설정된 시간 동안 이동
 
 
-void Callback::SelectMotion(int go, double transition_time)
+void Callback::SelectMotion(int go)
 // 모션 선택 및 실행 함수입니다.
-// go는 실행할 모션 ID를 나타내며, transition_time은 현재 자세에서 첫 번째 포즈까지 이동하는 시간을 나타냅니다.
+// go는 실행할 모션 ID를 나타냅니다.
 {
     if (sdk_motion.Is_Moving())
     // Is_Moving(): 현재 모션 진행 여부
@@ -33,7 +33,7 @@ void Callback::SelectMotion(int go, double transition_time)
         return;
     }
 
-    bool success = sdk_motion.Generate_Trajectory(go, All_Theta, transition_time);
+    bool success = sdk_motion.Generate_Trajectory(go, All_Theta);
     // success: Generate_Trajectory() 함수의 반환값, 모션 궤적 생성 여부
     // false를 반환하게 되면 그 시점의 마지막 목표각을 유지하고, 새로운 모션 명령은 무시됩니다.
     if (success)
@@ -58,7 +58,7 @@ bool Callback::IsMoving()
 
 // main.cpp에서 아래와 같이 사용 (예시)
 
-// callback.SelectMotion(1, 2.0);  모션 ID 1 실행, 현재각 -> 첫 포즈 2초 이동
+// callback.SelectMotion(1);  모션 ID 1 실행, 현재각 -> 첫 포즈 SDK에 설정된 시간 동안 이동
 // 궤적이 생성되어 active_trajectory_에 저장됨
 // 1번 모션이 끝나기 전까지는 새로운 모션 명령이 들어와도 무시됨
 
@@ -69,8 +69,8 @@ bool Callback::IsMoving()
 //
 // ...
 //
-// if (!callback.IsMoving()) {callback.SelectMotion(2, 1.0);}
-// 모션 ID 1이 끝나면 모션 ID 2 실행, 현재각 -> 첫 포즈 1초 이동
+// if (!callback.IsMoving()) {callback.SelectMotion(2);}
+// 모션 ID 1이 끝나면 모션 ID 2 실행, 현재각 -> 첫 포즈 SDK에 설정된 시간 동안 이동
 
 
 

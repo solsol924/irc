@@ -68,7 +68,7 @@ void MainNode::StartInitialPose()
     callback_->SetCurrentTheta(current_theta);
 
     //초기자세까지 3초동안 이동하는 궤적 생성
-    callback_->SelectMotion(0, 3.0); 
+    callback_->SelectMotion(0);
 
     if (!callback_->IsMoving()) {
         RCLCPP_ERROR(this->get_logger(), "초기자세 궤적 생성 실패");
@@ -123,103 +123,103 @@ void MainNode::MotionCallback(
     switch (command)
     {
         case 0:
-            callback_->SelectMotion(0, 1.0);
+            callback_->SelectMotion(0);
             break;
 
         case 1:
-            callback_->SelectMotion(1, 1.0);
+            callback_->SelectMotion(1);
             break;
 
         case 2: 
-            callback_->SelectMotion(2, 1.0);
+            callback_->SelectMotion(2);
             break;
 
         case 3:
-            callback_->SelectMotion(3, 1.0);
+            callback_->SelectMotion(3);
             break;
 
         case 4:
-            callback_->SelectMotion(4, 1.0);
+            callback_->SelectMotion(4);
             break;
 
         case 5:
-            callback_->SelectMotion(5, 1.0);
+            callback_->SelectMotion(5);
             break;
 
         case 6:
-            callback_->SelectMotion(6, 1.0);
+            callback_->SelectMotion(6);
             break;
 
         case 7:
-            callback_->SelectMotion(7, 1.0);
+            callback_->SelectMotion(7);
             break;
 
         case 8:
-            callback_->SelectMotion(8, 1.0);
+            callback_->SelectMotion(8);
             break;
 
         case 9:
-            callback_->SelectMotion(9, 1.0);
+            callback_->SelectMotion(9);
             break;
 
         case 10:
-            callback_->SelectMotion(10, 1.0);
+            callback_->SelectMotion(10);
             break;
 
         case 11:
-            callback_->SelectMotion(11, 1.0);
+            callback_->SelectMotion(11);
             break;
 
         case 12:
-            callback_->SelectMotion(12, 1.0);
+            callback_->SelectMotion(12);
             break;
 
         case 13:
-            callback_->SelectMotion(13, 1.0);
+            callback_->SelectMotion(13);
             break;
 
         case 14:
-            callback_->SelectMotion(14, 1.0);
+            callback_->SelectMotion(14);
             break;
 
         case 15:
-            callback_->SelectMotion(15, 1.0);
+            callback_->SelectMotion(15);
             break;
 
         case 16:
-            callback_->SelectMotion(16, 1.0);
+            callback_->SelectMotion(16);
             break;
 
         case 17:
-            callback_->SelectMotion(17, 1.0);
+            callback_->SelectMotion(17);
             break;
 
         case 18:
-            callback_->SelectMotion(18, 1.0);
+            callback_->SelectMotion(18);
             break;
         
         case 19:
-            callback_->SelectMotion(19, 1.0);
+            callback_->SelectMotion(19);
             break;
 
         case 20:
-            callback_->SelectMotion(20, 1.0);
+            callback_->SelectMotion(20);
             break;
         
         case 21:
-            callback_->SelectMotion(21, 1.0);
+            callback_->SelectMotion(21);
             break;
 
         case 22:
-            callback_->SelectMotion(22, 1.0);
+            callback_->SelectMotion(22);
             break;
 
         case 23:
-            callback_->SelectMotion(23, 1.0);
+            callback_->SelectMotion(23);
             break;
 
         case 24:
-            callback_->SelectMotion(24, 1.0);
+            callback_->SelectMotion(24);
             break;
 
         default:

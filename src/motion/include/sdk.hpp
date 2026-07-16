@@ -24,7 +24,7 @@ enum class BlendType
 struct MotionSequence
 {
     std::vector<std::vector<double>> poses; // poses[i] = i번째 포즈의 관절각 배열
-    std::vector<double> durations; // durations[i] = poses[i] -> poses[i+1]까지 이동하는 시간 (초)
+    std::vector<double> durations; // durations[0] = current_pose -> poses[0], 이후 포즈 사이 이동 시간 (초)
     std::vector<BlendType> blends; // blends[i] = poses[i] -> poses[i+1] 이동 시, stop/smooth 선택
 };
 
@@ -45,9 +45,8 @@ public:
     //
     // active_trajectory_ 안에 앞으로 실행할 궤적을 미리 만들어두는 함수.
     //
-    // current_pose -> 첫 번째 포즈까지 transition_time 동안 이동하고,
-    // 그 다음 모션 내부 poses를 durations/blends 기준으로 실행함.
-    bool Generate_Trajectory(int motion_id, double* current_pose, double transition_time);
+    // current_pose부터 모션 내부 poses를 durations/blends 기준으로 실행함.
+    bool Generate_Trajectory(int motion_id, double* current_pose);
 
     // 200Hz마다 호출되는 함수
     // 매 tick마다 다음 목표 관절각을 All_Theta에 써줌.
