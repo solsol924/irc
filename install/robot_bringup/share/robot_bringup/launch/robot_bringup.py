@@ -1,1 +1,0 @@
-/home/solhee/irc/build/robot_bringup/launch/robot_bringup.py
