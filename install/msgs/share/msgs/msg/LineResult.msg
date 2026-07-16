@@ -1,1 +1,3 @@
-/home/solhee/irc/src/msgs/msg/LineResult.msg
+uint8 status
+float32 angle
+bool follow_point

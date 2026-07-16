@@ -1,1 +1,1 @@
-/home/solhee/irc/src/msgs/msg/MotionCommand.msg
+uint8 command

@@ -1,5 +1,6 @@
 import rclpy
 from rclpy.node import Node
+from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from collections import deque, Counter
 from msgs.msg import LineResult, MotionCommand, MotionEnd, BallResult, HurdleResult
 
@@ -7,7 +8,7 @@ from msgs.msg import LineResult, MotionCommand, MotionEnd, BallResult, HurdleRes
 
 class Motion:
     Initial_Pose = 0
-    Forward = 1
+    Forward_4step = 1
     Left_Half_Forward = 2
     Right_Half_Forward = 3
     Left_Forward = 4
@@ -26,7 +27,7 @@ class Motion:
     Neck_Center = 17
     Hurdle_Forward_20 = 18
     Hurdle_Go = 19
-    Forward_4step = 20
+    Forward_3step = 20
 
 
     Data_None = 99
@@ -42,7 +43,7 @@ MOTION_NAME = {
 
 class Ball:
     Ball_None = 99
-    Ball_Forward = Motion.Forward
+    Ball_Forward = Motion.Forward_3step
     Ball_Forward_1step = Motion.Forward_half
     Ball_Lost = 45
     Ball_Right = Motion.Right_Move
@@ -76,14 +77,20 @@ class MainDecision(Node):
 
         #초기값 설정
         self.status = 0
+        self.current_mode = "WaitingMode"
         #test mode true/false에 따라 초기값 조정
         self.motion_end = self.test_mode
+        self.motion_ready = self.test_mode
         self.line_data = False
         self.ball_data = False
         self.hurdle_data = False
 
         if self.test_mode:
-            self.get_logger().info("test_mode enabled: motion_end will stay true")
+            self.get_logger().info(
+                "test_mode enabled: motion_ready and motion_end will stay true"
+            )
+        else:
+            self.get_logger().info("motion_ready=true 수신 전까지 판단을 대기합니다.")
 
         #ball
         self.has_ball = False
@@ -108,7 +115,7 @@ class MainDecision(Node):
         #hurdle
         self.hurdle_step = 0
         self.hurdle_done = False
-        
+
         #최근 5개의 데이터를 저장하는 버퍼
         self.line_buffer = deque(maxlen=5)
         self.line_follow_point_buffer = deque(maxlen=5)
@@ -120,17 +127,41 @@ class MainDecision(Node):
         self.line_result_sub = self.create_subscription(LineResult, 'line_result', self.LineResultCallback, 10)
         self.ball_result_sub = self.create_subscription(BallResult, 'ball_result', self.BallResultCallback, 10)
         self.hurdle_result_sub = self.create_subscription(HurdleResult, 'hurdle_result', self.HurdleResultCallback, 10)
-        self.motion_end_sub = self.create_subscription(MotionEnd, 'motion_end', self.MotionEndCallback, 10)
+        #motion_ready 명령을 못 받는 상황 방지
+        motion_state_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.motion_end_sub = self.create_subscription(
+            MotionEnd, 'motion_end', self.MotionEndCallback, motion_state_qos
+        )
         #publish
         self.motion_pub = self.create_publisher(MotionCommand, 'motion_command', 10)
         
     # 콜백함수에서 모션 종료 여부를 업데이트
     def MotionEndCallback(self, motion_end_msg:MotionEnd):
+        if self.test_mode:
+            self.motion_ready = True
+            self.motion_end = True
+            return
+        #메시지 받기 이전 상태 저장
+        was_ready = self.motion_ready
+        #최신 상태 갱신
+        self.motion_ready = motion_end_msg.motion_ready
         self.motion_end = motion_end_msg.motion_end
-        self.get_logger().info(f"motion_end: {motion_end_msg.motion_end}")
+
+        self.get_logger().info(
+            f"motion_ready: {self.motion_ready}, motion_end: {self.motion_end}"
+        )
+        if self.motion_ready and not was_ready:
+            self.get_logger().info("초기자세 완료 확인: 판단을 시작합니다.")
         
         
     def LineResultCallback(self, line_msg:LineResult):
+        if not self.motion_ready:
+            return
+
         #최신 데이터 갱신
         self.line_buffer.append(line_msg.status)
         self.line_follow_point_buffer.append(line_msg.follow_point)
@@ -159,6 +190,9 @@ class MainDecision(Node):
             self.get_logger().info(f"line: motion not ended yet")
             
     def BallResultCallback(self, ball_msg:BallResult):
+        if not self.motion_ready:
+            return
+
         self.ball_buffer.append(ball_msg.status)
         self.ball_in_hand_buffer.append(bool(getattr(ball_msg, 'ball_in_hand', False)))
         
@@ -181,6 +215,9 @@ class MainDecision(Node):
             self.get_logger().info(f"ball: motion not ended yet")
             
     def HurdleResultCallback(self, hurdle_msg:HurdleResult):
+        if not self.motion_ready:
+            return
+
         self.hurdle_buffer.append(hurdle_msg.status)
         if self.motion_end == True:
             if len (self.hurdle_buffer) >= 3:
@@ -201,6 +238,9 @@ class MainDecision(Node):
 
 ###### 판단 로직 시작 #######
     def Decision(self):
+        if not self.motion_ready:
+            return
+
         if not (self.line_data == True and self.ball_data == True and self.hurdle_data == True):   
             self.get_logger().info("아직 모든 데이터가 도착하지 않았습니다. 판단 대기중...")
             return
@@ -319,6 +359,8 @@ class MainDecision(Node):
 
     #Ball mission            
     def BallMode(self):
+        self.current_mode = "BallMode"
+
         #Pick 이후 공 확인, 회전 처리
         if self.pick_done == True:
             self.CheckBall()
@@ -389,6 +431,8 @@ class MainDecision(Node):
         
     #Hurdle mission            
     def HurdleMode(self):
+        self.current_mode = "HurdleMode"
+
         #step 0: 허들 감지 후 20번 종종걸음
         if self.hurdle_step == 0:
             self.hurdle_step = 1
@@ -406,6 +450,8 @@ class MainDecision(Node):
     
     #Lost             
     def LostMode(self):
+        self.current_mode = "LostMode"
+
         #step 0 
         if self.lost_step == 0:
             if self.line_status != Line.Line_None:
@@ -511,13 +557,15 @@ class MainDecision(Node):
             self.lost_step = 0
             self.lost_found_dir = 0
             self.lost_body_turn_count = 0
-            self.status = Motion.Forward
+            self.status = Motion.Forward_3step
             self.MotionCommand()
             return
 
 
     #Line tracking 
     def LineTracking(self):  
+        self.current_mode = "LineTrackingMode"
+
         #라인을 찾고 lost count 초기화
         self.lost_count = 0 
         self.lost_step = 0
@@ -529,13 +577,17 @@ class MainDecision(Node):
         self.MotionCommand()
                 
     def MotionCommand(self):
+        if not self.motion_ready:
+            self.get_logger().info("motion_ready=false: 모션 명령을 보내지 않습니다.")
+            return
+
         motion_msg = MotionCommand()
         
         if self.status == 0:
             motion_msg.command = Motion.Initial_Pose
             
         elif self.status == 1:
-            motion_msg.command = Motion.Forward
+            motion_msg.command = Motion.Forward_4step
         
         elif self.status == 2:
             motion_msg.command = Motion.Left_Half_Forward
@@ -592,12 +644,13 @@ class MainDecision(Node):
             motion_msg.command = Motion.Hurdle_Go
             
         elif self.status == 20:
-            motion_msg.command = Motion.Forward_4step
+            motion_msg.command = Motion.Forward_3step
         
         self.motion_pub.publish(motion_msg)
         motion_name = MOTION_NAME.get(motion_msg.command, 'Unknown')
         self.get_logger().info(
-            f"[MotionCommand] command={motion_msg.command}, motion={motion_name}"
+            f"[MotionCommand] command={motion_msg.command}, "
+            f"motion={motion_name}, mode={self.current_mode}"
         )
         
         self.line_data = False

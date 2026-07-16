@@ -1,0 +1,133 @@
+hurdle_vision_fusion:
+  ros__parameters:
+    # ------------------------------------------------------------
+    # Topics
+    # ------------------------------------------------------------
+    realsense_color_topic: /camera/color/image_raw
+    realsense_depth_topic: /camera/aligned_depth_to_color/image_raw
+    realsense_camera_info_topic: /camera/color/camera_info
+    webcam_state_topic: /line_tracker/state
+    vision_state_topic: /hurdle/vision_state
+    realsense_debug_image_topic: /hurdle/realsense_debug_image
+    hurdle_result_topic: hurdle_result
+    recalibrate_service: /hurdle/recalibrate
+
+    # ------------------------------------------------------------
+    # Fusion
+    # or | and | realsense_only | webcam_only
+    # or: 둘 중 하나가 잡아도 허들. 실제 경기에서 먼저 이 값으로 테스트.
+    # and: 오검출은 줄지만 두 카메라가 동시에 보지 못하면 놓칠 수 있음.
+    # ------------------------------------------------------------
+    fusion_mode: or
+    realsense_timeout_sec: 0.6
+    webcam_timeout_sec: 0.6
+    webcam_min_conf: 0.35
+    webcam_frame_width: 640.0
+    webcam_frame_height: 480.0
+    webcam_fov_x_deg: 60.0
+    webcam_cross_y_ratio: 0.72
+    publish_hz: 15.0
+    print_every_n_frames: 10
+
+    # orientation: 허들 막대가 수평에서 기울어진 각도
+    # bearing: RealSense 화면 중심에서 허들 중심까지 좌우 각도
+    # zero: 기존 publisher처럼 항상 0도
+    result_angle_source: orientation
+    result_angle_absolute: false
+
+    # ------------------------------------------------------------
+    # RealSense image/depth
+    # ------------------------------------------------------------
+    depth_scale: 0.001
+    sync_queue_size: 10
+    sync_slop_sec: 0.08
+    publish_realsense_debug_image: true
+    show_realsense_window: false
+
+    fallback_fx: 607.0
+    fallback_fy: 606.0
+    fallback_cx: 325.5
+    fallback_cy: 239.4
+
+    # expo.py vertical ROI + full width.
+    roi_left_ratio: 0.0
+    roi_right_ratio: 1.0
+    roi_top_ratio: 0.0
+    roi_bottom_ratio: 1.0
+
+    # ------------------------------------------------------------
+    # Color mask
+    # hsv | lab | and | or
+    # 기본 or: 선배 LAB 또는 expo HSV 중 하나가 잡으면 후보로 유지하고,
+    # depth와 가로 형상으로 최종 검증.
+    # ------------------------------------------------------------
+    color_combine_mode: or
+    use_hsv_mask: true
+    use_lab_mask: true
+
+    # expo HSV
+    h_low: 20
+    h_high: 38
+    s_low: 120
+    s_high: 255
+    v_low: 80
+    v_high: 255
+
+    # expo BGR guard
+    use_bgr_guard: true
+    bgr_min_r: 120
+    bgr_min_g: 120
+    bgr_min_r_minus_b: 80
+    bgr_min_g_minus_b: 70
+    bgr_max_abs_r_minus_g: 60
+
+    # 선배 LAB
+    l_low: 40
+    l_high: 255
+    a_low: 90
+    a_high: 160
+    b_low: 140
+    b_high: 255
+
+    # ------------------------------------------------------------
+    # Floor calibration / height
+    # 시작 직후 ROI 안에는 평평한 빈 바닥만 보여야 함.
+    # ------------------------------------------------------------
+    depth_min_m: 0.05
+    depth_max_m: 1.50
+    floor_calibration_frames: 45
+    calibration_max_strict_yellow_pixels: 300
+    calibration_min_valid_ratio: 0.55
+    compensate_floor_offset: true
+    max_floor_offset_m: 0.08
+
+    # floor_delta | absolute | hybrid
+    height_mode: floor_delta
+    camera_height_m: 0.430
+    hybrid_floor_weight: 0.75
+    height_min_m: 0.010
+    height_max_m: 0.150
+    height_offset_m: 0.018
+    height_top_fraction: 0.20
+
+    # ------------------------------------------------------------
+    # Senior-code-style horizontal contour filtering
+    # ------------------------------------------------------------
+    morph_kernel_size: 5
+    horizontal_close_width: 21
+    horizontal_close_height: 3
+    min_contour_area: 450.0
+    min_span_ratio: 0.18
+    min_aspect_ratio: 3.0
+    min_fill_ratio: 0.10
+    min_depth_support_ratio: 0.15
+    max_horizontal_angle_deg: 40.0
+
+    # Temporal stability / crossing
+    detection_confirm_frames: 3
+    lost_hold_frames: 3
+    history_size: 12
+    cross_y_ratio: 0.55
+    cross_hysteresis: 0.03
+
+    allow_color_only_fallback: false

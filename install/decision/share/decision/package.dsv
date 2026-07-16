@@ -4,6 +4,3 @@ source;share/decision/hook/pythonpath.sh
 source;share/decision/hook/ament_prefix_path.ps1
 source;share/decision/hook/ament_prefix_path.dsv
 source;share/decision/hook/ament_prefix_path.sh
-source;../../build/decision/share/decision/hook/pythonpath_develop.ps1
-source;../../build/decision/share/decision/hook/pythonpath_develop.dsv
-source;../../build/decision/share/decision/hook/pythonpath_develop.sh

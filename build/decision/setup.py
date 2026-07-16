@@ -1,1 +1,0 @@
-/home/solhee/irc/src/decision/setup.py

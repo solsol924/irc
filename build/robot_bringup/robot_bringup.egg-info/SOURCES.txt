@@ -2,6 +2,7 @@ package.xml
 setup.cfg
 setup.py
 launch/robot_bringup.py
+launch/vision_stack.launch.py
 resource/robot_bringup
 robot_bringup/__init__.py
 robot_bringup.egg-info/PKG-INFO

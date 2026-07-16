@@ -5,7 +5,7 @@ from rclpy.node import Node
 from msgs.msg import LineResult
 
 class LineStatus:
-    Forward = 1
+    Forward_4step = 1
     Left_Half_Forward = 2
     Right_Half_Forward = 3
     Left_Forward = 4
@@ -93,7 +93,7 @@ class LineDecision:
             return LineStatus.Left_Turn, abs(angle)
         if angle > 0.0:
             return LineStatus.Right_Turn, abs(angle)
-        return LineStatus.Forward, 0.0
+        return LineStatus.Forward_4step, 0.0
 
     def _status_from_line_angle(self, angle: Optional[float]) -> Tuple[int, float]:
         if angle is None:
@@ -103,7 +103,7 @@ class LineDecision:
 
         # 15도 이하: 직진
         if abs_angle <= self.forward_angle:
-            return LineStatus.Forward, 0.0
+            return LineStatus.Forward_4step, 0.0
 
         # 15~38도: 미세회전
         if abs_angle <= self.turn_angle:

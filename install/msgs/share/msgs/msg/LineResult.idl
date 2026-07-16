@@ -1,1 +1,16 @@
-/home/solhee/irc/build/msgs/rosidl_adapter/msgs/msg/LineResult.idl
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from msgs/msg/LineResult.msg
+// generated code does not contain a copyright notice
+
+
+module msgs {
+  module msg {
+    struct LineResult {
+      uint8 status;
+
+      float angle;
+
+      boolean follow_point;
+    };
+  };
+};

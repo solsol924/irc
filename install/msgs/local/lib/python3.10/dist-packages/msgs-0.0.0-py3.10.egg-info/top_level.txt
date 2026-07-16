@@ -1,1 +1,1 @@
-/home/solhee/irc/build/msgs/ament_cmake_python/msgs/msgs.egg-info/top_level.txt
+msgs

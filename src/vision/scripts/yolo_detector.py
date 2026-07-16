@@ -4,8 +4,7 @@
 YOLO Line Tracker - Vision Module
 IRC 2026 Humanoid Robot Competition
 
-기존 detect_line.py의 HSV 라인 검출을 사용하지 않고,
-YOLO detection 결과의 line bbox 중심점으로 라인 주행 값을 계산합니다.
+YOLO detection 결과의 line bbox 중심점으로 라인 주행 값을 계산
 
 publish 값:
 - point_count
@@ -16,6 +15,12 @@ publish 값:
 - target_x, target_y
 - follow_distance
 - ball / hurdle detection 정보
+
+공/허들 fusion 관련 주의:
+- 이 파일은 웹캠 YOLO의 ball/hurdle 검출 필드를 /line_tracker/state로 전달합니다.
+- ball_result는 ball_vision_fusion.py가 담당합니다.
+- hurdle_result는 hurdle_vision_fusion.py가 담당하도록 기본값에서 직접 발행을 끕니다.
+  YOLO 단독 모드가 필요할 때만 settings.ini의 publish_hurdle_result=true를 사용하세요.
 """
 
 import configparser
@@ -26,7 +31,7 @@ import math
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 from collections import deque
 
 from line_status_publisher import (
@@ -35,16 +40,15 @@ from line_status_publisher import (
     LineStatus,
     LineStatusPublisher,
 )
-from ball_status_publisher import BallStatusPublisher
 from hurdle_status_publisher import HurdleStatusPublisher
 
 try:
     from ultralytics import YOLO
-except ImportError as e:
+except ImportError :
     YOLO = None
 
 
-LINE_REPRESENTATIVE_POINT_COUNT = 3
+LINE_REPRESENTATIVE_POINT_COUNT = 3  # 라인 대표점 최대 개수
 
 
 # ═══════════════════════════════════════════════════════
@@ -87,7 +91,7 @@ class ObjectDetection:
 # ═══════════════════════════════════════════════════════
 
 LINE_STATUS_NAME = {
-    LineStatus.Forward: "Forward",
+    LineStatus.Forward_4step: "Forward_4step",
     LineStatus.Left_Half_Forward: "Left_Half_Forward",
     LineStatus.Right_Half_Forward: "Right_Half_Forward",
     LineStatus.Left_Forward: "Left_Forward",
@@ -218,9 +222,9 @@ def load_config(ini_path: str = "settings.ini") -> dict:
 
         # YOLO
         "yolo_model": "best.pt",
-        "yolo_conf": 0.35,
+        "yolo_conf": 0.20,
         "line_conf": 0.35,
-        "ball_conf": 0.35,
+        "ball_conf": 0.20,
         "hurdle_conf": 0.35,
         "yolo_imgsz": 640,
         "yolo_device": "0",
@@ -233,14 +237,16 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         # Because YOLO boxes are usually clipped to the image, reject_edge_cut_objects is used
         # to remove ball/hurdle boxes touching the image border.
         "min_visible_ratio": 0.70,
-        "reject_edge_cut_objects": True,
+        "reject_edge_cut_objects": False,
         "edge_margin": 3,
-        "partial_filter_classes": "ball,hurdle",
+        "partial_filter_classes": "",
 
         # output
         "show_window": True,
         "save_video": "",
         "print_every_n_frames": 5,
+        # Fusion 노드와 hurdle_result 중복 발행을 막기 위해 기본 False.
+        "publish_hurdle_result": False,
     }
 
     p = Path(ini_path)
@@ -289,6 +295,7 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "show_window": gb("output", "show_window", defaults["show_window"]),
         "save_video": gs("output", "save_video", defaults["save_video"]),
         "print_every_n_frames": gi("output", "print_every_n_frames", defaults["print_every_n_frames"]),
+        "publish_hurdle_result": gb("output", "publish_hurdle_result", defaults["publish_hurdle_result"]),
     })
     return cfg
 
@@ -339,6 +346,26 @@ def fit_poly2(points):
     b = -2 * a_n * y_mean / s**2 + b_n / s
     c = a_n * y_mean**2 / s**2 - b_n * y_mean / s + c_n
     return np.array([a, b, c], dtype=np.float64)
+
+
+def fit_line(points):
+    """x = b*y + c 형태로 직선 피팅."""
+    if len(points) < 2:
+        return None
+    pts = np.array(points, dtype=np.float64)
+    ys, xs = pts[:, 1], pts[:, 0]
+    y_mean = ys.mean()
+    y_std = ys.std()
+    if y_std <= 1e-6:
+        return None
+    yn = (ys - y_mean) / y_std
+    try:
+        b_n, c_n = np.polyfit(yn, xs, 1)
+    except (np.linalg.LinAlgError, ValueError):
+        return None
+    b = b_n / y_std
+    c = c_n - b_n * y_mean / y_std
+    return np.array([b, c], dtype=np.float64)
 
 
 # ═══════════════════════════════════════════════════════
@@ -444,24 +471,24 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
     # 화면 위쪽을 0도로 보고, 검출점이 오른쪽이면 +, 왼쪽이면 -이다.
     payload["follow_angle"] = float(math.degrees(math.atan2(target_x - robot_x, robot_y - target_y)))
 
-    # 점 2개 이상이면 두 점을 이은 선과 로봇 중심선의 부호 있는 각도차 계산
+    # 점 2~3개는 검출점 전체를 직선으로 피팅한다.
+    # 점 2개에서는 LineDecision이 follow_angle을 사용하고, 점 3개에서는
+    # line_angle을 사용하므로 동일한 직선 피팅각을 해당 필드에 넣는다.
     if point_count >= 2:
-        p0 = line_points[0]  # 가까운 점
-        p1 = line_points[1]  # 그다음 점
-        dx = p1[0] - p0[0]
-        dy_up = p0[1] - p1[1]  # 화면 위쪽 방향을 +로 보기 위함
-        two_point_angle = float(math.degrees(math.atan2(dx, dy_up)))
+        if point_count <= 3:
+            line_coeffs = fit_line(line_points)
+            if line_coeffs is not None:
+                b, _c = line_coeffs
+                fitted_angle = float(math.degrees(math.atan2(-b, 1.0)))
+                payload["tangent_angle"] = fitted_angle
+                if point_count == 2:
+                    payload["follow_angle"] = fitted_angle
+                else:
+                    payload["line_angle"] = fitted_angle
 
-        # 점 2개에서는 line_angle을 사용하지 않고 follow_angle로만 전달한다.
-        if point_count == 2:
-            payload["follow_angle"] = two_point_angle
-        else:
-            # 점 3개 이상에서만 line_angle을 사용한다.
-            payload["line_angle"] = two_point_angle
-            payload["tangent_angle"] = payload["line_angle"]
-
-    # 점 3개 이상이면 2차함수 a값과 두 번째 점 접선 각도 계산
-    if point_count >= 3:
+    # 점 4개 이상이면 검출점 전체로 2차함수를 피팅한다. 두 번째로 가까운
+    # 점에서 구한 접선각을 line_angle에도 넣어 실제 주행 모드 판단에 사용한다.
+    if point_count >= 4:
         coeffs = fit_poly2(line_points)
         if coeffs is not None:
             a, b, _c = coeffs
@@ -471,6 +498,7 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
             slope_dx_dy_down = 2.0 * a * y2 + b
             # 이미지 y는 아래로 증가하므로, 로봇 진행 방향인 위쪽 기준으로 부호 반전
             payload["tangent_angle"] = float(math.degrees(math.atan2(-slope_dx_dy_down, 1.0)))
+            payload["line_angle"] = payload["tangent_angle"]
 
     return payload
 
@@ -615,24 +643,36 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
         cv2.drawMarker(vis, (tx, ty), (0, 0, 255), cv2.MARKER_CROSS, 24, 2)
         cv2.line(vis, (w // 2, h), (tx, ty), (0, 0, 255), 1, cv2.LINE_AA)
 
-    # polynomial curve
-    if len(line_points) >= 3:
-        coeffs = fit_poly2(line_points)
-        if coeffs is not None:
-            a, b, c = coeffs
+    # 2~3개는 직선, 4개 이상은 이차곡선으로 표시한다. 두 경우 모두
+    # 실제 검출점의 y 범위에서만 그려 데이터가 없는 영역으로 외삽하지 않는다.
+    if len(raw_line_points) >= 2:
+        y_min = max(roi_top, int(math.floor(min(y for _x, y in raw_line_points))))
+        y_max = min(roi_bottom - 1, int(math.ceil(max(y for _x, y in raw_line_points))))
+        draw_coeffs = (
+            fit_line(raw_line_points)
+            if len(raw_line_points) <= 3
+            else fit_poly2(raw_line_points)
+        )
+        if draw_coeffs is not None and y_max > y_min:
             pts_curve = []
-            for y_px in range(roi_top, roi_bottom, 4):
-                x_px = int(a * y_px**2 + b * y_px + c)
+            for y_px in range(y_min, y_max + 1, 2):
+                x_px = float(np.polyval(draw_coeffs, y_px))
                 if 0 <= x_px < w:
-                    pts_curve.append((x_px, y_px))
+                    pts_curve.append((int(round(x_px)), y_px))
             if len(pts_curve) > 1:
-                cv2.polylines(vis, [np.array(pts_curve, dtype=np.int32).reshape(-1, 1, 2)],
-                              False, (255, 0, 255), 2, cv2.LINE_AA)
+                cv2.polylines(
+                    vis,
+                    [np.array(pts_curve, dtype=np.int32).reshape(-1, 1, 2)],
+                    False,
+                    (255, 0, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
 
-    # text panel - compact
-    cv2.rectangle(vis, (8, 8), (335, 112), (20, 20, 20), -1)
-    cv2.rectangle(vis, (8, 8), (335, 112), (255, 0, 255), 1)
+    # text panel - keep the font size, but fit the panel to its contents.
     font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 0.36
+    font_thickness = 1
     lines = [
         f"st:{payload['status']} {payload['status_name'][:12]}",
         f"pc:{payload['point_count']} dist:{payload['line_distance']:+.0f}px",
@@ -641,8 +681,53 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
         f"tar:({payload['target_x']:.0f},{payload['target_y']:.0f}) fd:{payload['follow_distance']:.0f}",
         f"B:{int(payload['ball_detected'])} H:{int(payload['hurdle_detected'])}",
     ]
+
+    panel_x, panel_y = 4, 4
+    padding_x, padding_y = 6, 5
+    line_gap = 4
+    text_sizes = [
+        cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+        for text in lines
+    ]
+    text_height = max(size[1] for size in text_sizes)
+    line_height = text_height + line_gap
+    panel_width = max(size[0] for size in text_sizes) + 2 * padding_x
+    panel_height = (
+        2 * padding_y
+        + len(lines) * text_height
+        + (len(lines) - 1) * line_gap
+    )
+    panel_right = min(w - 1, panel_x + panel_width)
+    panel_bottom = min(h - 1, panel_y + panel_height)
+
+    cv2.rectangle(
+        vis,
+        (panel_x, panel_y),
+        (panel_right, panel_bottom),
+        (20, 20, 20),
+        -1,
+    )
+    cv2.rectangle(
+        vis,
+        (panel_x, panel_y),
+        (panel_right, panel_bottom),
+        (255, 0, 255),
+        1,
+    )
+
+    text_x = panel_x + padding_x
+    first_baseline_y = panel_y + padding_y + text_height
     for i, text in enumerate(lines):
-        cv2.putText(vis, text, (16, 25 + i * 14), font, 0.36, (230, 230, 230), 1, cv2.LINE_AA)
+        cv2.putText(
+            vis,
+            text,
+            (text_x, first_baseline_y + i * line_height),
+            font,
+            font_scale,
+            (230, 230, 230),
+            font_thickness,
+            cv2.LINE_AA,
+        )
 
     return vis
 
@@ -665,8 +750,8 @@ def analyze_frame_yolo(
         LINE_REPRESENTATIVE_POINT_COUNT,
     )
 
-    # band point가 있으면 그걸 알고리즘용 point로 사용. 없으면 raw point 사용.
-    line_points = band_points if band_points else raw_line_points
+    # 주행용 직선/이차 피팅에는 대표점으로 압축하지 않은 모든 검출점을 사용한다.
+    line_points = raw_line_points
     payload = make_vision_payload(dets, line_points, w, h, cfg)
     payload = LINE_SMOOTHER.smooth(payload, w, h)
     payload = apply_line_status(payload, w, h, line_status_publisher)
@@ -674,7 +759,8 @@ def analyze_frame_yolo(
     # 디버깅용으로 raw 개수도 같이 넣어둠. 알고리즘 쪽에서 안 쓰면 무시해도 됨.
     payload["raw_point_count"] = int(len(raw_line_points))
 
-    vis = visualize_yolo(frame, dets, raw_line_points, line_points, payload, roi_box, cfg)
+    # 대표점은 피팅에는 사용하지 않고 디버그 표시용으로만 유지한다.
+    vis = visualize_yolo(frame, dets, raw_line_points, band_points, payload, roi_box, cfg)
     return payload, vis
 
 
@@ -702,54 +788,37 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
             self.line_status_publisher = LineStatusPublisher(self)
-            self.ball_status_publisher = BallStatusPublisher(self)
-            self.hurdle_status_publisher = HurdleStatusPublisher(self)
-
-            self.declare_parameter("webcam_robot_center_x", 320.0)
-            self.declare_parameter("webcam_robot_center_y", 420.0)
-            self.declare_parameter("webcam_fov_x_deg", 60.0)
-            self.get_logger().info(f"YoloVisionNode started cfg={ini_path}")
-
-        def publish_object_status(self, payload: dict, frame: np.ndarray):
-            frame_w = frame.shape[1]
-            robot_x = float(self.get_parameter("webcam_robot_center_x").value)
-            robot_y = float(self.get_parameter("webcam_robot_center_y").value)
-            fov_x_deg = float(self.get_parameter("webcam_fov_x_deg").value)
-
-            ball_detected = bool(payload.get("ball_detected", False))
-            ball_x = float(payload.get("ball_x", -1.0))
-            ball_y = float(payload.get("ball_y", -1.0))
-
-            if ball_detected and ball_x >= 0.0 and ball_y >= 0.0:
-                dx = ball_x - robot_x
-                dy = ball_y - robot_y
-                focal_px = frame_w / (
-                    2.0 * math.tan(math.radians(fov_x_deg) / 2.0)
-                )
-                angle_error = math.degrees(math.atan2(dx, focal_px))
-                distance_px = math.hypot(dx, dy)
-            else:
-                ball_detected = False
-                dx = None
-                angle_error = None
-                distance_px = None
-
-            ball_status, ball_angle = self.ball_status_publisher.publish_ball_status(
-                webcam_ball_detected=ball_detected,
-                webcam_ball_x_distance=dx,
-                webcam_ball_angle_error=angle_error,
-                webcam_ball_distance_px=distance_px,
+            self.hurdle_status_publisher = (
+                HurdleStatusPublisher(self)
+                if self.cfg.get("publish_hurdle_result", False)
+                else None
             )
+
+            # 공의 최종 BallStatus 판단은 별도 ball_vision_fusion.py가 담당한다.
+            # 이 노드는 /line_tracker/state에 ball_detected, ball_x, ball_y,
+            # ball_conf, ball_bbox만 담아 웹캠 Vision 결과를 전달한다.
+            self.get_logger().info(f"YoloVisionNode started cfg={ini_path}")
+            self.get_logger().info(
+                "YOLO direct hurdle_result publish="
+                f"{bool(self.hurdle_status_publisher is not None)}"
+            )
+
+        def publish_hurdle_status(self, payload: dict):
+            """YOLO 단독 모드에서만 hurdle_result를 직접 발행한다."""
+            if self.hurdle_status_publisher is None:
+                # hurdle_detected/x/y/conf/bbox는 그대로 /line_tracker/state에 남는다.
+                # 최종 hurdle_result는 hurdle_vision_fusion.py가 발행한다.
+                payload["hurdle_result_publisher"] = "hurdle_vision_fusion"
+                return
+
             hurdle_status, hurdle_angle = (
                 self.hurdle_status_publisher.publish_hurdle_status(
                     hurdle_detected=bool(payload.get("hurdle_detected", False)),
                 )
             )
-
-            payload["ball_status"] = int(ball_status)
-            payload["ball_status_angle"] = float(ball_angle)
             payload["hurdle_status"] = int(hurdle_status)
             payload["hurdle_status_angle"] = float(hurdle_angle)
+            payload["hurdle_result_publisher"] = "yolo_vision"
 
         def cb_image(self, msg: Image):
             frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
@@ -762,12 +831,18 @@ def main_ros2(ini_path: str = "settings.ini"):
                 self.cfg,
                 self.line_status_publisher,
             )
-            self.publish_object_status(payload, frame)
+            self.publish_hurdle_status(payload)
             self.pub_state.publish(String(data=json.dumps(payload, ensure_ascii=False)))
 
             debug_msg = self.bridge.cv2_to_imgmsg(vis, encoding="bgr8")
             debug_msg.header = msg.header
             self.pub_debug.publish(debug_msg)
+
+            # ROS 모드에서도 settings.ini의 show_window 설정을 적용한다.
+            if self.cfg["show_window"]:
+                cv2.imshow("YOLO Vision", vis)
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    rclpy.shutdown()
 
             self.frame_count += 1
             if self.frame_count % self.cfg["print_every_n_frames"] == 0:
@@ -784,7 +859,9 @@ def main_ros2(ini_path: str = "settings.ini"):
     node = YoloVisionNode()
     rclpy.spin(node)
     node.destroy_node()
-    rclpy.shutdown()
+    cv2.destroyAllWindows()
+    if rclpy.ok():
+        rclpy.shutdown()
 
 
 # ═══════════════════════════════════════════════════════

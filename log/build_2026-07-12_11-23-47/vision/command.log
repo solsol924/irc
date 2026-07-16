@@ -1,1 +1,0 @@
-Invoking command in '/home/solhee/irc/build/vision': AMENT_PREFIX_PATH=/home/solhee/irc/install/msgs CMAKE_PREFIX_PATH=/home/solhee/irc/install/msgs LD_LIBRARY_PATH=/home/solhee/irc/install/msgs/lib PYTHONPATH=/home/solhee/irc/install/msgs/local/lib/python3.10/dist-packages /usr/bin/cmake /home/solhee/irc/src/vision -DCMAKE_INSTALL_PREFIX=/home/solhee/irc/install/vision

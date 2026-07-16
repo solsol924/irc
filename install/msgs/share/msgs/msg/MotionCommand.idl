@@ -1,1 +1,12 @@
-/home/solhee/irc/build/msgs/rosidl_adapter/msgs/msg/MotionCommand.idl
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from msgs/msg/MotionCommand.msg
+// generated code does not contain a copyright notice
+
+
+module msgs {
+  module msg {
+    struct MotionCommand {
+      uint8 command;
+    };
+  };
+};

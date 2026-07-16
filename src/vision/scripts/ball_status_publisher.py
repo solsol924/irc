@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import math
 from typing import Optional, Tuple
 
 from rclpy.node import Node
@@ -6,7 +7,8 @@ from msgs.msg import BallResult
 
 
 class BallStatus:
-    Forward = 1
+    Forward_4step = 1
+    Forward_3step = 20
     Left_Half_Forward = 2
     Right_Half_Forward = 3
     Left_Forward = 4
@@ -42,8 +44,8 @@ class BallFeatures:
 
 class BallDecision:
     def __init__(self):
-        #50cm 이하이면 공 모드, 25cm 이하에서는 webcam에서 보이는 거리(임의)
-        self.ball_entry_distance_cm = 50.0
+        #150cm 이하이면 공 모드, 25cm 이하에서는 webcam에서 보이는 거리(임의)
+        self.ball_entry_distance_cm = 150.0
 
         # 직진, 미세회전, 회전 기준각 8도, 25도
         self.angle_center_tol = 8.0
@@ -59,8 +61,8 @@ class BallDecision:
 
         #pick_ready 기준
         ### 공 중심까지 거리가 80px, 오차범위 ± 20px이내, 3프레임 연속 들어오면
-        #미세 전진,후진 기준:120px
-        self.fine_adjust_start_distance_px = 120.0
+        # 공 중심과 로봇 중심의 y축 거리가 260px 이하면 미세 접근 시작
+        self.fine_adjust_start_distance_px = 260.0
         self.pick_distance_px = 80.0
         self.pick_distance_tol_px = 20.0
 
@@ -109,6 +111,13 @@ class BallDecision:
         angle = self.webcam_angle(features.webcam_ball_angle_error)
         webcam_ball_distance = features.webcam_ball_distance_px
 
+        # 전체 픽셀 거리에서 x축 성분을 제외해 y축 거리의 절댓값을 구한다.
+        if webcam_ball_distance is not None:
+            webcam_ball_distance = math.sqrt(max(
+                0.0,
+                webcam_ball_distance ** 2 - webcam_ball_x_distance ** 2,
+            ))
+
         #아직 멀리 있으면 방향보정하며 공에 접근
         if not self.Close_to_ball(webcam_ball_distance):
             return self.Move_to_Ball(webcam_ball_x_distance, angle)
@@ -132,7 +141,7 @@ class BallDecision:
         webcam_ball_distance_px: Optional[float],
     ) -> bool:
 
-        #webcam 픽셀 거리 기준. 10cm 정도를 120px로 환산
+        # 공 중심과 로봇 중심의 y축 픽셀 거리 기준
         if webcam_ball_distance_px is None:
             return False
 
@@ -177,7 +186,7 @@ class BallDecision:
 
         #거의 정면일때는 직진
         if abs_x_distance <= self.x_center_tol_px:
-            return BallStatus.Forward, 0.0
+            return BallStatus.Forward_3step, 0.0
 
         #20~60px 오차에는 약한 방향보정하며 접근
         if abs_x_distance <= self.x_half_forward_tol_px:
@@ -198,7 +207,7 @@ class BallDecision:
 
         #8도 이하는 직진
         if -self.angle_center_tol <= angle <= self.angle_center_tol:
-            return BallStatus.Forward, 0.0
+            return BallStatus.Forward_3step, 0.0
 
         #8~25도는 미세회전
         if -self.angle_half_forward_tol <= angle <= self.angle_half_forward_tol:
