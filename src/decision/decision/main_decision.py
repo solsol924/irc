@@ -9,7 +9,7 @@ from msgs.msg import LineResult, MotionCommand, MotionEnd, BallResult, HurdleRes
 class Motion:
     Initial_Pose = 0
     Forward_4step = 1
-    Left_Half_Forward = 2
+    Left_Half_Forward = 2  #기본4스텝
     Right_Half_Forward = 3
     Left_Forward = 4
     Right_Forward = 5
@@ -28,7 +28,10 @@ class Motion:
     Hurdle_Forward_20 = 18
     Hurdle_Go = 19
     Forward_3step = 20
-
+    Left_Half_Forward_3step = 21
+    Right_Half_Forward_3step = 22
+    Left_Turn_Ball = 23
+    Right_Turn_Ball = 24
 
     Data_None = 99
     
@@ -81,6 +84,9 @@ class MainDecision(Node):
         #test mode true/false에 따라 초기값 조정
         self.motion_end = self.test_mode
         self.motion_ready = self.test_mode
+        self.ball_decision_delay_sec = 1.0
+        self.motion_end_received_time_ns = None
+        self.ball_delay_log_printed = False
         self.line_data = False
         self.ball_data = False
         self.hurdle_data = False
@@ -147,9 +153,15 @@ class MainDecision(Node):
             return
         #메시지 받기 이전 상태 저장
         was_ready = self.motion_ready
+        was_motion_end = self.motion_end
         #최신 상태 갱신
         self.motion_ready = motion_end_msg.motion_ready
         self.motion_end = motion_end_msg.motion_end
+
+        # 모션 종료 신호가 새로 들어온 시각 저장
+        if self.motion_end and not was_motion_end:
+            self.motion_end_received_time_ns = self.get_clock().now().nanoseconds
+            self.ball_delay_log_printed = False
 
         self.get_logger().info(
             f"motion_ready: {self.motion_ready}, motion_end: {self.motion_end}"
@@ -255,7 +267,25 @@ class MainDecision(Node):
             or self.turn_after_pick == True
             or self.turn_after_shoot == True
             or (self.ball_status != Ball.Ball_None)
-        ):    
+        ):
+            # BallMode만 motion_end 수신 후 1초가 지난 뒤 판단
+            if (
+                not self.test_mode
+                and self.motion_end_received_time_ns is not None
+            ):
+                elapsed_sec = (
+                    self.get_clock().now().nanoseconds
+                    - self.motion_end_received_time_ns
+                ) / 1_000_000_000
+
+                if elapsed_sec < self.ball_decision_delay_sec:
+                    if not self.ball_delay_log_printed:
+                        self.get_logger().info(
+                            "BallMode 판단 대기: motion_end 수신 후 1초 대기합니다."
+                        )
+                        self.ball_delay_log_printed = True
+                    return
+
             self.BallMode()
 
         #우선순위 2 : hurdle mode
@@ -645,6 +675,18 @@ class MainDecision(Node):
             
         elif self.status == 20:
             motion_msg.command = Motion.Forward_3step
+            
+        elif self.status == 21:
+            motion_msg.command = Motion.Left_Half_Forward_3step
+        
+        elif self.status == 22:
+            motion_msg.command = Motion.Right_Half_Forward_3step
+            
+        elif self.status == 23:
+            motion_msg.command = Motion.Left_Turn_Ball
+        
+        elif self.status == 24:
+            motion_msg.command = Motion.Right_Turn_Ball
         
         self.motion_pub.publish(motion_msg)
         motion_name = MOTION_NAME.get(motion_msg.command, 'Unknown')

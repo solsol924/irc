@@ -1,1 +1,2 @@
 bool motion_end
+bool motion_ready

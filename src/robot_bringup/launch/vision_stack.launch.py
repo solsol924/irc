@@ -8,6 +8,7 @@
   ~/irc/src/vision/scripts
 """
 
+import glob
 import sys
 
 from launch import LaunchDescription
@@ -19,6 +20,16 @@ from launch_ros.actions import Node
 
 def _make_webcam_node(context):
     device = LaunchConfiguration("webcam_device").perform(context)
+    if device == "auto":
+        c920_devices = sorted(
+            glob.glob("/dev/v4l/by-id/*C920*video-index0")
+        )
+        if not c920_devices:
+            raise RuntimeError(
+                "C920 webcam not found under /dev/v4l/by-id/. "
+                "Connect the webcam or set webcam_device explicitly."
+            )
+        device = c920_devices[0]
     width = int(LaunchConfiguration("webcam_width").perform(context))
     height = int(LaunchConfiguration("webcam_height").perform(context))
     fps = int(LaunchConfiguration("webcam_fps").perform(context))
@@ -36,6 +47,13 @@ def _make_webcam_node(context):
                     "video_device": device,
                     "image_size": [width, height],
                     "time_per_frame": [1, fps],
+                    # C920 영상은 픽셀 기반 검출에만 사용합니다. 유효한
+                    # 미보정 CameraInfo를 지정해 드라이버의 기본 ~/.ros
+                    # 캘리브레이션 파일 조회와 불필요한 오류를 막습니다.
+                    "camera_info_url": (
+                        "package://robot_bringup/config/"
+                        "webcam_uncalibrated.yaml"
+                    ),
                 }
             ],
             remappings=[
@@ -97,7 +115,14 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("start_hurdle", default_value="true"),
         DeclareLaunchArgument("start_monitor", default_value="true"),
         DeclareLaunchArgument("start_selector", default_value="true"),
-        DeclareLaunchArgument("webcam_device", default_value="/dev/video0"),
+        DeclareLaunchArgument(
+            "webcam_device",
+            default_value="auto",
+            description=(
+                "Webcam device path. 'auto' selects the C920 video-index0 "
+                "device from /dev/v4l/by-id/."
+            ),
+        ),
         DeclareLaunchArgument("webcam_width", default_value="640"),
         DeclareLaunchArgument("webcam_height", default_value="480"),
         DeclareLaunchArgument("webcam_fps", default_value="30"),
@@ -141,6 +166,8 @@ def generate_launch_description() -> LaunchDescription:
         cwd=scripts_dir,
         output="screen",
         emulate_tty=True,
+        respawn=True,
+        respawn_delay=2.0,
         condition=IfCondition(start_yolo),
         additional_env={"PYTHONUNBUFFERED": "1"},
     )
@@ -191,11 +218,12 @@ def generate_launch_description() -> LaunchDescription:
         additional_env={"PYTHONUNBUFFERED": "1"},
     )
 
-    # 카메라 토픽이 먼저 생성된 뒤 영상 노드를 시작한다.
+    # YOLO는 모델/런타임 초기화에 시간이 걸리므로 카메라와 동시에 먼저
+    # 시작한다. 구독 생성 전 모델을 로드하므로 카메라 토픽이 아직 없어도
+    # 안전하며, 나머지 vision 프로세스는 기존처럼 2초 뒤 시작한다.
     delayed_vision = TimerAction(
         period=2.0,
         actions=[
-            yolo_process,
             ball_process,
             hurdle_process,
             monitor_process,
@@ -204,5 +232,5 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     return LaunchDescription(
-        declarations + [realsense_node, webcam_node, delayed_vision]
+        declarations + [realsense_node, webcam_node, yolo_process, delayed_vision]
     )

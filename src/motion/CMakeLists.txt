@@ -1,36 +1,62 @@
 cmake_minimum_required(VERSION 3.8)
 project(motion)
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(dynamixel_sdk REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(Threads REQUIRED)
+
+add_executable(main
+  src/main.cpp
+  src/callback.cpp
+  src/dynamixel.cpp
+  src/sdk.cpp
+)
+
+target_include_directories(main PRIVATE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(main PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+  )
 endif()
 
-# 이 줄을 추가하여 ROS2 패키지 기능을 사용. 
-# 메시지 타입과 서비스가 필요하면 추가
-find_package(rclcpp REQUIRED)
-find_package(dynamixel_sdk REQUIRED)
+ament_target_dependencies(main
+  rclcpp
+  msgs
+  std_srvs
+  dynamixel_sdk
+)
 
-#빌드 타겟 설정
-add_executable(main_motion src/main_motion.cpp)
+target_link_libraries(main
+  Eigen3::Eigen
+  Threads::Threads
+)
 
-#타겟에 대한 포함 디렉토리
-target_include_directories(main_motion PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
-target_compile_features(main_motion PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+install(TARGETS main
+  DESTINATION lib/${PROJECT_NAME}
+)
 
-install(TARGETS main_motion
-  DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORY include/
+  DESTINATION include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 

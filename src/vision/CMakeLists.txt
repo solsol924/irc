@@ -24,8 +24,10 @@ endif()
 
 install(PROGRAMS
   scripts/yolo_detector.py
-  scripts/realsense_ball_detector.py
   scripts/ball_vision_fusion.py
+  scripts/hurdle_vision_fusion.py
+  scripts/realsense_debug_selector.py
+  scripts/vision_status_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

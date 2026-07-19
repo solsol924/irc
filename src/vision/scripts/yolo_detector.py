@@ -29,6 +29,8 @@ import numpy as np
 import time
 import math
 import json
+import gc
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -377,7 +379,7 @@ def load_yolo_model(cfg: dict):
         raise RuntimeError("ultralytics가 설치되어 있지 않습니다. pip install -U ultralytics 후 실행하세요.")
     model_path = cfg["yolo_model"]
     print(f"[YOLO] loading model: {model_path}")
-    return YOLO(model_path)
+    return YOLO(model_path, task="detect")
 
 
 def yolo_detect(model, frame: np.ndarray, cfg: dict) -> list[ObjectDetection]:
@@ -783,8 +785,16 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.cfg = cfg
             self.bridge = CvBridge()
             self.frame_count = 0
+            self.inference_failures = 0
+            self.last_model_reload = 0.0
             self.model = load_yolo_model(self.cfg)
-            self.sub = self.create_subscription(Image, "/camera/image_raw", self.cb_image, 10)
+            # YOLO is interested in the newest camera frame only.  A deep reliable
+            # queue retains stale full-resolution images while TensorRT is busy and
+            # can exhaust Jetson's shared CPU/GPU memory.
+            from rclpy.qos import qos_profile_sensor_data
+            self.sub = self.create_subscription(
+                Image, "/camera/image_raw", self.cb_image, qos_profile_sensor_data
+            )
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
             self.line_status_publisher = LineStatusPublisher(self)
@@ -821,16 +831,42 @@ def main_ros2(ini_path: str = "settings.ini"):
             payload["hurdle_result_publisher"] = "yolo_vision"
 
         def cb_image(self, msg: Image):
-            frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-            if self.cfg["flip_vertical"]:
-                frame = cv2.flip(frame, 0)
+            try:
+                frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+                if self.cfg["flip_vertical"]:
+                    frame = cv2.flip(frame, 0)
 
-            payload, vis = analyze_frame_yolo(
-                frame,
-                self.model,
-                self.cfg,
-                self.line_status_publisher,
-            )
+                payload, vis = analyze_frame_yolo(
+                    frame,
+                    self.model,
+                    self.cfg,
+                    self.line_status_publisher,
+                )
+                self.inference_failures = 0
+            except Exception:
+                self.inference_failures += 1
+                self.get_logger().error(
+                    "GPU inference failed; keeping YOLO node alive "
+                    f"(consecutive={self.inference_failures})\n{traceback.format_exc()}"
+                )
+
+                # A transient TensorRT/CUDA allocation failure must not take down
+                # the ROS process.  Release the wrapper and reload at most once
+                # every five seconds; no CPU model fallback is used.
+                now = time.monotonic()
+                if now - self.last_model_reload >= 5.0:
+                    self.last_model_reload = now
+                    try:
+                        self.model = None
+                        gc.collect()
+                        self.model = load_yolo_model(self.cfg)
+                        self.get_logger().warn("TensorRT model reloaded after inference failure")
+                    except Exception:
+                        self.get_logger().error(
+                            "TensorRT model reload failed; will retry on a later frame\n"
+                            + traceback.format_exc()
+                        )
+                return
             self.publish_hurdle_status(payload)
             self.pub_state.publish(String(data=json.dumps(payload, ensure_ascii=False)))
 

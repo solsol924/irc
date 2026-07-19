@@ -22,6 +22,10 @@ class BallStatus:
     Pick_Ready = 12
     Recatch = 13
     Shoot = 14
+    Left_Half_Forward_3step = 21
+    Right_Half_Forward_3step = 22
+    Left_Turn_Ball = 23
+    Right_Turn_Ball = 24
     Ball_In_Hand = 50
     Ball_Lost = 45
     Ball_None = 99
@@ -44,12 +48,11 @@ class BallFeatures:
 
 class BallDecision:
     def __init__(self):
-        #150cm 이하이면 공 모드, 25cm 이하에서는 webcam에서 보이는 거리(임의)
-        self.ball_entry_distance_cm = 150.0
+        #100cm 이하이면 공 모드, 25cm 이하에서는 webcam에서 보이는 거리(임의)
+        self.ball_entry_distance_cm = 100.0
 
-        # 직진, 미세회전, 회전 기준각 8도, 25도
-        self.angle_center_tol = 8.0
-        self.angle_half_forward_tol = 25.0
+        # 직진, 제자리회전 기준각 5도
+        self.angle_center_tol = 5.0
 
         # 웹캠의 x좌표 거리 기준
         ### 25px 이내면 중앙
@@ -191,8 +194,8 @@ class BallDecision:
         #20~60px 오차에는 약한 방향보정하며 접근
         if abs_x_distance <= self.x_half_forward_tol_px:
             if webcam_ball_x_distance < 0:
-                return BallStatus.Left_Half_Forward, angle
-            return BallStatus.Right_Half_Forward, angle
+                return BallStatus.Left_Half_Forward_3step, angle
+            return BallStatus.Right_Half_Forward_3step, angle
 
         #60px 이상 오차에는 좌/우 회전하며 접근
         if webcam_ball_x_distance < 0:
@@ -205,21 +208,15 @@ class BallDecision:
         if angle is None:
             return BallStatus.Ball_None, 0.0
 
-        #8도 이하는 직진
+        #5도 이하는 직진
         if -self.angle_center_tol <= angle <= self.angle_center_tol:
             return BallStatus.Forward_3step, 0.0
 
-        #8~25도는 미세회전
-        if -self.angle_half_forward_tol <= angle <= self.angle_half_forward_tol:
+        #5도 이상은 제자리회전
+        if abs(angle) > self.angle_center_tol:
             if angle < 0:
-                return BallStatus.Left_Half_Forward, angle
-            return BallStatus.Right_Half_Forward, angle
-
-        #25도 이상은 회전
-        if angle < 0:
-            return BallStatus.Left_Forward, angle
-
-        return BallStatus.Right_Forward, angle
+                return BallStatus.Left_Turn_Ball, angle
+            return BallStatus.Right_Turn_Ball, angle
 
     #webcam 각도 값이 없을 때 안전하게 처리, 값 있으면 그대로 반환
     def webcam_angle(self, angle: Optional[float]) -> float:

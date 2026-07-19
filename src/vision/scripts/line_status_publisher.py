@@ -23,10 +23,10 @@ class LineFeatures:
     # 검출된 라인 점 개수
     point_count: int
 
-    # 점 2개일 때 또는 직선 판단일 때 사용하는 선 각도
+    # 점 3개 이하일 때 또는 직선 판단일 때 사용하는 선 각도
     line_angle: Optional[float] = None
 
-    # 점 3개 이상일 때 이차함수의 a값
+    # 점 4개 이상일 때 이차함수의 a값
     curve_a: Optional[float] = None
 
     # 곡선일 때 중앙점에서의 접선 각도
@@ -71,7 +71,12 @@ class LineDecision:
         if features.point_count <= 2:
             return self._status_from_follow_angle(features.follow_angle)
 
-        # 점 3개 이상에서 라인이 중심선으로부터 130px 이상 벗어나면
+        # 점 3개는 일반 직선 상황으로 line_angle을 기준으로 판단한다.
+        if features.point_count == 3:
+            return self._status_from_line_angle(features.line_angle)
+
+        # 점 4개 이상은 곡선 상황이다.
+        # 라인이 중심선으로부터 130px 이상 벗어나면
         # 각도보다 거리 보정을 우선하여 라인이 있는 방향으로 미세회전한다.
         distance = features.line_distance
         if (
@@ -82,8 +87,8 @@ class LineDecision:
                 return LineStatus.Left_Half_Forward, 0.0
             return LineStatus.Right_Half_Forward, 0.0
 
-        # 중심선과 가까우면 line_angle을 15도/38도 기준으로 판단한다.
-        return self._status_from_line_angle(features.line_angle)
+        # 중심선과 가까우면 곡선의 접선 각도를 기준으로 판단한다.
+        return self._status_from_line_angle(features.tangent_angle)
 
     def _status_from_follow_angle(self, angle: Optional[float]) -> Tuple[int, float]:
         if angle is None:
@@ -93,6 +98,7 @@ class LineDecision:
             return LineStatus.Left_Turn, abs(angle)
         if angle > 0.0:
             return LineStatus.Right_Turn, abs(angle)
+
         return LineStatus.Forward_4step, 0.0
 
     def _status_from_line_angle(self, angle: Optional[float]) -> Tuple[int, float]:
@@ -114,9 +120,9 @@ class LineDecision:
 
         # 38도 초과: 회전
         if angle < 0:
-            return LineStatus.Left_Forward, abs_angle
+            return LineStatus.Left_Turn, abs_angle
         else:
-            return LineStatus.Right_Forward, abs_angle
+            return LineStatus.Right_Turn, abs_angle
 
 
 class LineStatusPublisher:
