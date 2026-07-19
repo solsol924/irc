@@ -6,7 +6,9 @@ import json
 import time
 from typing import Optional
 
+import cv2
 import rclpy
+from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
@@ -31,10 +33,18 @@ class RealSenseDebugSelector(Node):
             "/vision/realsense_debug_image",
         )
         self.declare_parameter("state_timeout_sec", 0.5)
+        self.declare_parameter("show_window", True)
+        self.declare_parameter(
+            "window_name",
+            "RealSense Ball / Hurdle Vision",
+        )
 
         self.state_timeout_sec = float(
             self.get_parameter("state_timeout_sec").value
         )
+        self.show_window = bool(self.get_parameter("show_window").value)
+        self.window_name = str(self.get_parameter("window_name").value)
+        self.bridge = CvBridge()
         self.ball_detected = False
         self.hurdle_detected = False
         self.ball_state_time = 0.0
@@ -74,8 +84,23 @@ class RealSenseDebugSelector(Node):
 
         self.get_logger().info(
             "RealSense debug selector started: "
-            "/vision/realsense_debug_image"
+            "/vision/realsense_debug_image, "
+            f"show_window={self.show_window}"
         )
+
+    def _publish_and_show(self, msg: Image) -> None:
+        self.pub_image.publish(msg)
+        if not self.show_window:
+            return
+        try:
+            frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+            cv2.imshow(self.window_name, frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                rclpy.shutdown()
+        except Exception as exc:
+            self.get_logger().warn(
+                f"Failed to show selected RealSense debug image: {exc}"
+            )
 
     def cb_ball_state(self, msg: String) -> None:
         try:
@@ -119,15 +144,23 @@ class RealSenseDebugSelector(Node):
         self.latest_ball_image = msg
         source = self._active_source()
         if source in {"ball", "default"}:
-            self.pub_image.publish(msg)
+            self._publish_and_show(msg)
 
     def cb_hurdle_image(self, msg: Image) -> None:
         self.latest_hurdle_image = msg
         source = self._active_source()
         if source == "hurdle":
-            self.pub_image.publish(msg)
+            self._publish_and_show(msg)
         elif source == "default" and self.latest_ball_image is None:
-            self.pub_image.publish(msg)
+            self._publish_and_show(msg)
+
+    def destroy_node(self):
+        if self.show_window:
+            try:
+                cv2.destroyWindow(self.window_name)
+            except cv2.error:
+                pass
+        return super().destroy_node()
 
 
 def main(args=None) -> None:

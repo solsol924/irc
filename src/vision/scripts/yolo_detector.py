@@ -50,9 +50,6 @@ except ImportError :
     YOLO = None
 
 
-LINE_REPRESENTATIVE_POINT_COUNT = 3  # 라인 대표점 최대 개수
-
-
 # ═══════════════════════════════════════════════════════
 #  데이터 클래스
 # ═══════════════════════════════════════════════════════
@@ -305,30 +302,6 @@ def load_config(ini_path: str = "settings.ini") -> dict:
 # ═══════════════════════════════════════════════════════
 #  기존 detect_line.py의 2차 피팅 로직 유지
 # ═══════════════════════════════════════════════════════
-
-def band_sample(centroids, roi_top, roi_bottom, n_bands):
-    """
-    검출된 line bbox 중심점으로 주행용 대표점을 만든다.
-
-    점이 n_bands개 이하면 bbox 중심점을 그대로 사용한다. 따라서 라인이 2개
-    검출된 경우 두 핑크 점은 각각의 bbox 중앙에 놓인다. 점이 n_bands개
-    이상이면 화면 아래쪽부터 균등하게 n_bands그룹으로 나누므로, 고정 높이
-    구간에 검출이 몰려도 항상 n_bands개의 대표점이 만들어진다.
-    """
-    if not centroids:
-        return []
-    if n_bands <= 0:
-        return sorted(centroids, key=lambda p: -p[1])
-
-    sorted_points = sorted(centroids, key=lambda p: -p[1])
-    if len(sorted_points) <= n_bands:
-        return [(float(cx), float(cy)) for cx, cy in sorted_points]
-
-    result = []
-    for group in np.array_split(np.asarray(sorted_points, dtype=np.float64), n_bands):
-        result.append((float(np.median(group[:, 0])), float(np.mean(group[:, 1]))))
-    return result
-
 
 def fit_poly2(points):
     """x = a*y^2 + b*y + c 형태로 2차 피팅."""
@@ -593,7 +566,7 @@ def make_vision_payload(dets: list[ObjectDetection], line_points: list[tuple[flo
 #  시각화
 # ═══════════════════════════════════════════════════════
 
-def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_points, line_points, payload: dict, roi_box, cfg: dict):
+def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_points, payload: dict, roi_box, cfg: dict):
     vis = frame.copy()
     h, w = vis.shape[:2]
     roi_top, roi_bottom, roi_left, roi_right = roi_box
@@ -625,12 +598,6 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
     # raw line bbox centers
     for cx, cy in raw_line_points:
         cv2.circle(vis, (int(cx), int(cy)), 4, (255, 255, 255), -1)
-
-    # band sampled / geometry points
-    for i, (cx, cy) in enumerate(line_points):
-        cv2.circle(vis, (int(cx), int(cy)), 8, (255, 0, 255), -1)
-        cv2.putText(vis, str(i), (int(cx) + 8, int(cy) - 8),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 255), 2)
 
     # target point
     # 빨간 십자/선은 라인을 놓쳤을 때만 표시.
@@ -744,15 +711,7 @@ def analyze_frame_yolo(
     dets = yolo_detect(model, frame, cfg)
     raw_line_points, roi_box = get_yolo_line_points(dets, w, h, cfg)
 
-    roi_top, roi_bottom, _roi_left, _roi_right = roi_box
-    band_points = band_sample(
-        raw_line_points,
-        roi_top,
-        roi_bottom,
-        LINE_REPRESENTATIVE_POINT_COUNT,
-    )
-
-    # 주행용 직선/이차 피팅에는 대표점으로 압축하지 않은 모든 검출점을 사용한다.
+    # 주행용 직선/이차 피팅에는 검출된 모든 라인 중심점을 사용한다.
     line_points = raw_line_points
     payload = make_vision_payload(dets, line_points, w, h, cfg)
     payload = LINE_SMOOTHER.smooth(payload, w, h)
@@ -761,8 +720,7 @@ def analyze_frame_yolo(
     # 디버깅용으로 raw 개수도 같이 넣어둠. 알고리즘 쪽에서 안 쓰면 무시해도 됨.
     payload["raw_point_count"] = int(len(raw_line_points))
 
-    # 대표점은 피팅에는 사용하지 않고 디버그 표시용으로만 유지한다.
-    vis = visualize_yolo(frame, dets, raw_line_points, band_points, payload, roi_box, cfg)
+    vis = visualize_yolo(frame, dets, raw_line_points, payload, roi_box, cfg)
     return payload, vis
 
 

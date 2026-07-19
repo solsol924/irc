@@ -97,6 +97,22 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("edge_ball_margin_px", 3)
         self.declare_parameter("edge_min_contour_area_ratio", 0.45)
         self.declare_parameter("edge_max_circle_ratio_error", 0.80)
+        # 실제 공 지름은 약 5~6 cm이다. Depth와 CameraInfo로 영상에서
+        # 예상되는 픽셀 반지름을 계산해 지나치게 크거나 작은 색상 물체를 제거한다.
+        # 마스크가 공 전체를 채우지 않을 수 있어 초기 허용 범위는 넉넉하게 둔다.
+        self.declare_parameter("ball_diameter_min_m", 0.050)
+        self.declare_parameter("ball_diameter_max_m", 0.060)
+        self.declare_parameter("radius_size_min_ratio", 0.45)
+        self.declare_parameter("radius_size_max_ratio", 1.70)
+        self.declare_parameter("edge_radius_size_min_ratio", 0.25)
+        self.declare_parameter("edge_radius_size_max_ratio", 2.00)
+        # 최소 외접원 면적뿐 아니라 contour 둘레 기반 원형도와 bbox 비율도 검사한다.
+        self.declare_parameter("min_circularity", 0.55)
+        self.declare_parameter("edge_min_circularity", 0.30)
+        self.declare_parameter("min_aspect_ratio", 0.55)
+        self.declare_parameter("max_aspect_ratio", 1.80)
+        self.declare_parameter("edge_min_aspect_ratio", 0.30)
+        self.declare_parameter("edge_max_aspect_ratio", 3.30)
         self.declare_parameter("morph_kernel_size", 5)
         self.declare_parameter("depth_patch_radius", 1)
         self.declare_parameter("realsense_hold_frames", 10)
@@ -194,6 +210,42 @@ class BallVisionFusionNode(Node):
         )
         self.edge_max_circle_ratio_error = float(
             self.get_parameter("edge_max_circle_ratio_error").value
+        )
+        self.ball_diameter_min_m = float(
+            self.get_parameter("ball_diameter_min_m").value
+        )
+        self.ball_diameter_max_m = float(
+            self.get_parameter("ball_diameter_max_m").value
+        )
+        self.radius_size_min_ratio = float(
+            self.get_parameter("radius_size_min_ratio").value
+        )
+        self.radius_size_max_ratio = float(
+            self.get_parameter("radius_size_max_ratio").value
+        )
+        self.edge_radius_size_min_ratio = float(
+            self.get_parameter("edge_radius_size_min_ratio").value
+        )
+        self.edge_radius_size_max_ratio = float(
+            self.get_parameter("edge_radius_size_max_ratio").value
+        )
+        self.min_circularity = float(
+            self.get_parameter("min_circularity").value
+        )
+        self.edge_min_circularity = float(
+            self.get_parameter("edge_min_circularity").value
+        )
+        self.min_aspect_ratio = float(
+            self.get_parameter("min_aspect_ratio").value
+        )
+        self.max_aspect_ratio = float(
+            self.get_parameter("max_aspect_ratio").value
+        )
+        self.edge_min_aspect_ratio = float(
+            self.get_parameter("edge_min_aspect_ratio").value
+        )
+        self.edge_max_aspect_ratio = float(
+            self.get_parameter("edge_max_aspect_ratio").value
         )
         self.depth_patch_radius = max(
             0, int(self.get_parameter("depth_patch_radius").value)
@@ -407,6 +459,15 @@ class BallVisionFusionNode(Node):
                 self.min_contour_area = float(param.value)
             elif param.name == "max_circle_ratio_error":
                 self.max_circle_ratio_error = float(param.value)
+            elif param.name in {
+                "ball_diameter_min_m", "ball_diameter_max_m",
+                "radius_size_min_ratio", "radius_size_max_ratio",
+                "edge_radius_size_min_ratio", "edge_radius_size_max_ratio",
+                "min_circularity", "edge_min_circularity",
+                "min_aspect_ratio", "max_aspect_ratio",
+                "edge_min_aspect_ratio", "edge_max_aspect_ratio",
+            }:
+                setattr(self, param.name, float(param.value))
 
         return SetParametersResult(successful=True)
 
@@ -592,7 +653,8 @@ class BallVisionFusionNode(Node):
         )
 
         best: Optional[
-            Tuple[float, np.ndarray, float, float, float, float]
+            Tuple[float, np.ndarray, float, float, float, float, float,
+                  float, float, float]
         ] = None
 
         for contour in contours:
@@ -613,6 +675,29 @@ class BallVisionFusionNode(Node):
             if area < min_area:
                 continue
 
+            aspect_ratio = float(bw) / max(float(bh), 1.0)
+            min_aspect = (
+                self.edge_min_aspect_ratio if touches_edge
+                else self.min_aspect_ratio
+            )
+            max_aspect = (
+                self.edge_max_aspect_ratio if touches_edge
+                else self.max_aspect_ratio
+            )
+            if not (min_aspect <= aspect_ratio <= max_aspect):
+                continue
+
+            perimeter = float(cv2.arcLength(contour, True))
+            if perimeter <= 1e-6:
+                continue
+            circularity = 4.0 * math.pi * area / (perimeter * perimeter)
+            required_circularity = (
+                self.edge_min_circularity if touches_edge
+                else self.min_circularity
+            )
+            if circularity < required_circularity:
+                continue
+
             (cx_roi, cy_roi), radius = cv2.minEnclosingCircle(contour)
             if radius <= 1e-6:
                 continue
@@ -628,32 +713,69 @@ class BallVisionFusionNode(Node):
             if ratio_error > max_ratio_error:
                 continue
 
-            if best is None or ratio_error < best[0]:
+            cx_img = int(round(cx_roi + roi_x_start))
+            cy_img = int(round(cy_roi + roi_y_start))
+            z_m = self._read_depth_m(
+                depth=depth,
+                cx=cx_img,
+                cy=cy_img,
+                frame_w=frame_w,
+                frame_h=frame_h,
+            )
+            if z_m is None or self.fx <= 0.0:
+                continue
+
+            expected_radius_min = (
+                self.fx * (self.ball_diameter_min_m * 0.5) / z_m
+            )
+            expected_radius_max = (
+                self.fx * (self.ball_diameter_max_m * 0.5) / z_m
+            )
+            size_min_ratio = (
+                self.edge_radius_size_min_ratio if touches_edge
+                else self.radius_size_min_ratio
+            )
+            size_max_ratio = (
+                self.edge_radius_size_max_ratio if touches_edge
+                else self.radius_size_max_ratio
+            )
+            allowed_radius_min = expected_radius_min * size_min_ratio
+            allowed_radius_max = expected_radius_max * size_max_ratio
+            if not (allowed_radius_min <= radius <= allowed_radius_max):
+                continue
+
+            expected_radius_mid = 0.5 * (
+                expected_radius_min + expected_radius_max
+            )
+            radius_ratio = radius / max(expected_radius_mid, 1e-6)
+            size_error = abs(radius_ratio - 1.0)
+            score = ratio_error + (1.0 - min(circularity, 1.0)) + size_error
+
+            if best is None or score < best[0]:
                 best = (
-                    ratio_error,
+                    score,
                     contour,
                     float(cx_roi),
                     float(cy_roi),
                     float(radius),
                     area,
+                    float(z_m),
+                    float(circularity),
+                    float(aspect_ratio),
+                    float(radius_ratio),
                 )
 
         if best is None:
             return None
 
-        ratio_error, _contour, cx_roi, cy_roi, radius, area = best
+        (
+            _score, _contour, cx_roi, cy_roi, radius, area, z_m,
+            circularity, aspect_ratio, radius_ratio,
+        ) = best
+        circle_area = math.pi * radius * radius
+        ratio_error = abs((area / circle_area) - 1.0)
         cx_img = int(round(cx_roi + roi_x_start))
         cy_img = int(round(cy_roi + roi_y_start))
-
-        z_m = self._read_depth_m(
-            depth=depth,
-            cx=cx_img,
-            cy=cy_img,
-            frame_w=frame_w,
-            frame_h=frame_h,
-        )
-        if z_m is None:
-            return None
 
         # pinhole camera model을 이용한 3차원 좌표
         x_m = (cx_img - self.cx_intr) * z_m / self.fx
@@ -680,6 +802,9 @@ class BallVisionFusionNode(Node):
             "raw_radius": float(radius),
             "raw_contour_area": float(area),
             "raw_circle_ratio_error": float(ratio_error),
+            "raw_circularity": float(circularity),
+            "raw_aspect_ratio": float(aspect_ratio),
+            "raw_radius_size_ratio": float(radius_ratio),
             "held_previous_detection": False,
         }
 
@@ -814,6 +939,9 @@ class BallVisionFusionNode(Node):
             "raw_radius": None,
             "raw_contour_area": None,
             "raw_circle_ratio_error": None,
+            "raw_circularity": None,
+            "raw_aspect_ratio": None,
+            "raw_radius_size_ratio": None,
             "held_previous_detection": False,
         }
 
@@ -1032,6 +1160,12 @@ class BallVisionFusionNode(Node):
                     self.latest_realsense[
                         "raw_circle_ratio_error"
                     ],
+                "circularity":
+                    self.latest_realsense["raw_circularity"],
+                "aspect_ratio":
+                    self.latest_realsense["raw_aspect_ratio"],
+                "radius_size_ratio":
+                    self.latest_realsense["raw_radius_size_ratio"],
                 "held_previous_detection":
                     self.latest_realsense[
                         "held_previous_detection"
