@@ -30,11 +30,13 @@ Ball Vision Fusion Node
 import json
 import math
 import time
+from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import cv2
 import numpy as np
 import rclpy
+import yaml
 from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rcl_interfaces.msg import SetParametersResult
@@ -48,6 +50,25 @@ from ball_status_publisher import BallStatusPublisher
 class BallVisionFusionNode(Node):
     def __init__(self) -> None:
         super().__init__("ball_vision_fusion")
+
+        source_config = (
+            Path(__file__).resolve().parent.parent / "config" / "ball_hsv.yaml"
+        )
+        default_hsv_config = (
+            source_config
+            if source_config.exists()
+            else Path.home()
+            / "irc"
+            / "src"
+            / "vision"
+            / "config"
+            / "ball_hsv.yaml"
+        )
+        self.declare_parameter("hsv_config_file", str(default_hsv_config))
+        self.hsv_config_path = Path(
+            str(self.get_parameter("hsv_config_file").value)
+        ).expanduser()
+        hsv_defaults = self._load_hsv_defaults(self.hsv_config_path)
 
         # =========================================================
         # ROS 토픽
@@ -79,13 +100,14 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("rs_roi_top_ratio", 0.0)
         self.declare_parameter("rs_roi_bottom_ratio", 1.0)
 
-        # 주황색 공 HSV 범위. 실제 환경에서 ros2 param set으로 조정한다.
-        self.declare_parameter("h_low", 8)
-        self.declare_parameter("h_high", 60)
-        self.declare_parameter("s_low", 60)
-        self.declare_parameter("s_high", 255)
-        self.declare_parameter("v_low", 60)
-        self.declare_parameter("v_high", 255)
+        # 시작할 때 vision/config/ball_hsv.yaml의 마지막 확정값을 기본값으로
+        # 사용한다. 개별 ROS 파라미터 override가 있으면 그것이 우선한다.
+        self.declare_parameter("h_low", hsv_defaults["h_low"])
+        self.declare_parameter("h_high", hsv_defaults["h_high"])
+        self.declare_parameter("s_low", hsv_defaults["s_low"])
+        self.declare_parameter("s_high", hsv_defaults["s_high"])
+        self.declare_parameter("v_low", hsv_defaults["v_low"])
+        self.declare_parameter("v_high", hsv_defaults["v_high"])
 
         self.declare_parameter("depth_threshold_m", 1.5)
         self.declare_parameter("depth_scale", 0.001)  # 16UC1 mm -> m
@@ -126,6 +148,7 @@ class BallVisionFusionNode(Node):
         # 디버그 영상 발행 여부. imshow는 headless 환경 문제 때문에 기본 False.
         self.declare_parameter("publish_realsense_debug_image", True)
         self.declare_parameter("show_realsense_window", False)
+        self.declare_parameter("debug_mask_preview_width", 96)
 
         # =========================================================
         # 웹캠 기하 파라미터
@@ -277,6 +300,10 @@ class BallVisionFusionNode(Node):
         self.show_realsense_window = bool(
             self.get_parameter("show_realsense_window").value
         )
+        self.debug_mask_preview_width = max(
+            0,
+            int(self.get_parameter("debug_mask_preview_width").value),
+        )
 
         self.webcam_frame_width = float(
             self.get_parameter("webcam_frame_width").value
@@ -400,6 +427,50 @@ class BallVisionFusionNode(Node):
         self.get_logger().info(
             f"BallResult output: {self.ball_result_topic}"
         )
+
+    def _load_hsv_defaults(self, path: Path) -> Dict[str, int]:
+        """Read the last accepted calibration once during node startup."""
+        fallback = {
+            "h_low": 8,
+            "h_high": 60,
+            "s_low": 60,
+            "s_high": 255,
+            "v_low": 60,
+            "v_high": 255,
+        }
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                data = yaml.safe_load(file) or {}
+            raw = (
+                data.get("ball_vision_fusion", {})
+                .get("ros__parameters", {})
+            )
+            values = {name: int(raw[name]) for name in fallback}
+        except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError) as exc:
+            self.get_logger().warning(
+                f"Could not load ball HSV from {path}: {exc}; "
+                "using built-in defaults"
+            )
+            return fallback
+
+        valid = (
+            0 <= values["h_low"] <= values["h_high"] <= 179
+            and 0 <= values["s_low"] <= values["s_high"] <= 255
+            and 0 <= values["v_low"] <= values["v_high"] <= 255
+        )
+        if not valid:
+            self.get_logger().warning(
+                f"Invalid ball HSV in {path}; using built-in defaults"
+            )
+            return fallback
+
+        self.get_logger().info(
+            f"Loaded ball HSV from {path}: "
+            f"H={values['h_low']}..{values['h_high']} "
+            f"S={values['s_low']}..{values['s_high']} "
+            f"V={values['v_low']}..{values['v_high']}"
+        )
+        return values
 
     # =============================================================
     # 파라미터
@@ -913,11 +984,18 @@ class BallVisionFusionNode(Node):
 
         # 마스크를 작은 미리보기로 합성
         mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        preview_w = min(240, debug.shape[1] // 3)
+        preview_w = min(
+            self.debug_mask_preview_width,
+            debug.shape[1] // 3,
+        )
         if preview_w > 0 and mask_bgr.shape[1] > 0:
             scale = preview_w / mask_bgr.shape[1]
             preview_h = max(1, int(mask_bgr.shape[0] * scale))
-            preview = cv2.resize(mask_bgr, (preview_w, preview_h))
+            preview = cv2.resize(
+                mask_bgr,
+                (preview_w, preview_h),
+                interpolation=cv2.INTER_NEAREST,
+            )
             y0 = 5
             x0 = max(0, debug.shape[1] - preview_w - 5)
             y1 = min(debug.shape[0], y0 + preview_h)

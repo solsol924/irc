@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(message_filters REQUIRED)
@@ -25,7 +26,9 @@ endif()
 install(PROGRAMS
   scripts/yolo_detector.py
   scripts/ball_vision_fusion.py
+  scripts/realsense_hsv_calibrator.py
   scripts/hurdle_vision_fusion.py
+  scripts/hoop_vision.py
   scripts/realsense_debug_selector.py
   scripts/vision_status_monitor.py
   DESTINATION lib/${PROJECT_NAME}

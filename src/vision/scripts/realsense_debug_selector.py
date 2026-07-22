@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""공/허들 RealSense 디버그 영상 중 현재 검출된 화면 하나를 선택한다."""
+"""공/허들/후프 디버그 영상 중 현재 검출된 화면 하나를 선택한다."""
 
 import json
 import time
@@ -10,6 +10,7 @@ import cv2
 import rclpy
 from cv_bridge import CvBridge
 from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
@@ -26,8 +27,10 @@ class RealSenseDebugSelector(Node):
             "hurdle_debug_topic",
             "/hurdle/realsense_debug_image",
         )
+        self.declare_parameter("hoop_debug_topic", "/hoop/debug_image")
         self.declare_parameter("ball_state_topic", "/ball/vision_state")
         self.declare_parameter("hurdle_state_topic", "/hurdle/vision_state")
+        self.declare_parameter("hoop_state_topic", "/hoop/vision_state")
         self.declare_parameter(
             "output_topic",
             "/vision/realsense_debug_image",
@@ -36,7 +39,7 @@ class RealSenseDebugSelector(Node):
         self.declare_parameter("show_window", True)
         self.declare_parameter(
             "window_name",
-            "RealSense Ball / Hurdle Vision",
+            "RealSense Ball / Hurdle / Hoop Vision",
         )
 
         self.state_timeout_sec = float(
@@ -47,10 +50,13 @@ class RealSenseDebugSelector(Node):
         self.bridge = CvBridge()
         self.ball_detected = False
         self.hurdle_detected = False
+        self.hoop_detected = False
         self.ball_state_time = 0.0
         self.hurdle_state_time = 0.0
+        self.hoop_state_time = 0.0
         self.latest_ball_image: Optional[Image] = None
         self.latest_hurdle_image: Optional[Image] = None
+        self.latest_hoop_image: Optional[Image] = None
 
         self.pub_image = self.create_publisher(
             Image,
@@ -67,6 +73,12 @@ class RealSenseDebugSelector(Node):
             Image,
             str(self.get_parameter("hurdle_debug_topic").value),
             self.cb_hurdle_image,
+            qos_profile_sensor_data,
+        )
+        self.create_subscription(
+            Image,
+            str(self.get_parameter("hoop_debug_topic").value),
+            self.cb_hoop_image,
             10,
         )
         self.create_subscription(
@@ -79,6 +91,12 @@ class RealSenseDebugSelector(Node):
             String,
             str(self.get_parameter("hurdle_state_topic").value),
             self.cb_hurdle_state,
+            10,
+        )
+        self.create_subscription(
+            String,
+            str(self.get_parameter("hoop_state_topic").value),
+            self.cb_hoop_state,
             10,
         )
 
@@ -123,6 +141,14 @@ class RealSenseDebugSelector(Node):
         )
         self.hurdle_state_time = time.monotonic()
 
+    def cb_hoop_state(self, msg: String) -> None:
+        try:
+            state = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError):
+            return
+        self.hoop_detected = bool(state.get("detected", False))
+        self.hoop_state_time = time.monotonic()
+
     def _active_source(self) -> str:
         now = time.monotonic()
         ball_active = bool(
@@ -133,9 +159,15 @@ class RealSenseDebugSelector(Node):
             self.hurdle_detected
             and now - self.hurdle_state_time <= self.state_timeout_sec
         )
+        hoop_active = bool(
+            self.hoop_detected
+            and now - self.hoop_state_time <= self.state_timeout_sec
+        )
 
         if ball_active:
             return "ball"
+        if hoop_active:
+            return "hoop"
         if hurdle_active:
             return "hurdle"
         return "default"
@@ -152,6 +184,18 @@ class RealSenseDebugSelector(Node):
         if source == "hurdle":
             self._publish_and_show(msg)
         elif source == "default" and self.latest_ball_image is None:
+            self._publish_and_show(msg)
+
+    def cb_hoop_image(self, msg: Image) -> None:
+        self.latest_hoop_image = msg
+        source = self._active_source()
+        if source == "hoop":
+            self._publish_and_show(msg)
+        elif (
+            source == "default"
+            and self.latest_ball_image is None
+            and self.latest_hurdle_image is None
+        ):
             self._publish_and_show(msg)
 
     def destroy_node(self):

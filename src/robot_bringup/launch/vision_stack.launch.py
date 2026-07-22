@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""IRC 전체 Vision 실행: webcam YOLO + RealSense + ball/hurdle fusion.
+"""IRC 전체 Vision 실행: webcam YOLO + RealSense ball + webcam hurdle.
 
 배치 위치:
   ~/irc/src/robot_bringup/launch/vision_stack.launch.py
@@ -19,6 +19,10 @@ from launch_ros.actions import Node
 
 
 def _make_webcam_node(context):
+    start_webcam = LaunchConfiguration("start_webcam").perform(context)
+    if start_webcam.strip().lower() not in {"1", "true", "yes", "on"}:
+        return []
+
     device = LaunchConfiguration("webcam_device").perform(context)
     if device == "auto":
         c920_devices = sorted(
@@ -67,19 +71,19 @@ def _make_webcam_node(context):
 def generate_launch_description() -> LaunchDescription:
     scripts_dir = LaunchConfiguration("scripts_dir")
     settings_ini = LaunchConfiguration("settings_ini")
-    hurdle_params = LaunchConfiguration("hurdle_params")
-
     start_realsense = LaunchConfiguration("start_realsense")
     start_webcam = LaunchConfiguration("start_webcam")
     start_yolo = LaunchConfiguration("start_yolo")
     start_ball = LaunchConfiguration("start_ball")
     start_hurdle = LaunchConfiguration("start_hurdle")
+    start_hoop = LaunchConfiguration("start_hoop")
     start_monitor = LaunchConfiguration("start_monitor")
     start_selector = LaunchConfiguration("start_selector")
 
     yolo_script = PathJoinSubstitution([scripts_dir, "yolo_detector.py"])
     ball_script = PathJoinSubstitution([scripts_dir, "ball_vision_fusion.py"])
     hurdle_script = PathJoinSubstitution([scripts_dir, "hurdle_vision_fusion.py"])
+    hoop_script = PathJoinSubstitution([scripts_dir, "hoop_vision.py"])
     monitor_script = PathJoinSubstitution([scripts_dir, "vision_status_monitor.py"])
     selector_script = PathJoinSubstitution([scripts_dir, "realsense_debug_selector.py"])
 
@@ -92,27 +96,24 @@ def generate_launch_description() -> LaunchDescription:
             description="vision Python scripts/settings/model directory",
         ),
         DeclareLaunchArgument(
-  	    "settings_ini",
-   	    default_value=PathJoinSubstitution(
-       	        [
-           	    EnvironmentVariable("HOME"),
-           	    "irc",
+            "settings_ini",
+            default_value=PathJoinSubstitution(
+                [
+                    EnvironmentVariable("HOME"),
+                    "irc",
                     "src",
                     "vision",
                     "config",
                     "settings.ini",
                 ]
-  	    ),
-  	),
-        DeclareLaunchArgument(
-            "hurdle_params",
-            default_value=PathJoinSubstitution([scripts_dir, "hurdle_vision_params.yaml"]),
+            ),
         ),
         DeclareLaunchArgument("start_realsense", default_value="true"),
         DeclareLaunchArgument("start_webcam", default_value="true"),
         DeclareLaunchArgument("start_yolo", default_value="true"),
         DeclareLaunchArgument("start_ball", default_value="true"),
         DeclareLaunchArgument("start_hurdle", default_value="true"),
+        DeclareLaunchArgument("start_hoop", default_value="true"),
         DeclareLaunchArgument("start_monitor", default_value="true"),
         DeclareLaunchArgument("start_selector", default_value="true"),
         DeclareLaunchArgument(
@@ -125,11 +126,11 @@ def generate_launch_description() -> LaunchDescription:
         ),
         DeclareLaunchArgument("webcam_width", default_value="640"),
         DeclareLaunchArgument("webcam_height", default_value="480"),
-        DeclareLaunchArgument("webcam_fps", default_value="30"),
+        DeclareLaunchArgument("webcam_fps", default_value="15"),
     ]
 
-    # 한 RealSense 드라이버가 color/depth를 한 번만 발행하고,
-    # ball_vision_fusion과 hurdle_vision_fusion이 같은 토픽을 구독한다.
+    # RealSense color/depth는 공과 후프 검출에 사용한다. 허들은 아래 webcam
+    # YOLO state만 사용하며 RealSense 영상을 구독하지 않는다.
     realsense_node = Node(
         package="realsense2_camera",
         executable="realsense2_camera_node",
@@ -183,18 +184,30 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     hurdle_process = ExecuteProcess(
-        name="hurdle_vision_fusion_process",
-        cmd=[
-            sys.executable,
-            hurdle_script,
-            "--ros-args",
-            "--params-file",
-            hurdle_params,
-        ],
+        name="webcam_hurdle_publisher_process",
+        cmd=[sys.executable, hurdle_script],
         cwd=scripts_dir,
         output="screen",
         emulate_tty=True,
         condition=IfCondition(start_hurdle),
+        additional_env={"PYTHONUNBUFFERED": "1"},
+    )
+
+    hoop_process = ExecuteProcess(
+        name="hoop_vision_process",
+        cmd=[
+            sys.executable,
+            hoop_script,
+            "--ros-args",
+            "-p",
+            "show_window:=false",
+            "-p",
+            "publish_debug_image:=true",
+        ],
+        cwd=scripts_dir,
+        output="screen",
+        emulate_tty=True,
+        condition=IfCondition(start_hoop),
         additional_env={"PYTHONUNBUFFERED": "1"},
     )
 
@@ -226,6 +239,7 @@ def generate_launch_description() -> LaunchDescription:
         actions=[
             ball_process,
             hurdle_process,
+            hoop_process,
             monitor_process,
             selector_process,
         ],

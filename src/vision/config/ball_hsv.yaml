@@ -1,0 +1,8 @@
+ball_vision_fusion:
+  ros__parameters:
+    h_low: 2
+    h_high: 15
+    s_low: 135
+    s_high: 255
+    v_low: 32
+    v_high: 255
