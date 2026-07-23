@@ -18,9 +18,14 @@ find_package(msgs REQUIRED)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+  find_package(ament_cmake_pytest REQUIRED)
   set(ament_cmake_copyright_FOUND TRUE)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+  ament_add_pytest_test(
+    test_ball_detector_core
+    test/test_ball_detector_core.py
+  )
 endif()
 
 install(PROGRAMS
@@ -35,6 +40,7 @@ install(PROGRAMS
 )
 
 install(FILES
+  scripts/ball_detector_core.py
   scripts/line_status_publisher.py
   scripts/ball_status_publisher.py
   scripts/hurdle_status_publisher.py

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Ball Vision Fusion Node
+Ball Vision Fusion Node.
 
 역할
 1. RealSense color + aligned depth 영상에서 OpenCV로 주황색 공을 직접 검출한다.
@@ -44,6 +44,12 @@ from rclpy.node import Node
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Bool, String
 
+from ball_detector_core import (
+    BallSupportConfig,
+    black_support_mask,
+    evaluate_ball_support,
+    hsv_range_mask,
+)
 from ball_status_publisher import BallStatusPublisher
 
 
@@ -109,6 +115,54 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("v_low", hsv_defaults["v_low"])
         self.declare_parameter("v_high", hsv_defaults["v_high"])
 
+        # 공은 경기 규칙상 항상 지름 150 mm의 검은 받침대 위에 있다.
+        # 모든 RealSense 공 후보가 이 색상/크기 문맥을 통과해야 한다.
+        self.declare_parameter(
+            "support_diameter_m", hsv_defaults["support_diameter_m"]
+        )
+        self.declare_parameter("support_v_max", hsv_defaults["support_v_max"])
+        self.declare_parameter(
+            "support_black_ratio_min",
+            hsv_defaults["support_black_ratio_min"],
+        )
+        self.declare_parameter(
+            "edge_support_black_ratio_min",
+            hsv_defaults["edge_support_black_ratio_min"],
+        )
+        self.declare_parameter(
+            "support_ball_color_ratio_max",
+            hsv_defaults["support_ball_color_ratio_max"],
+        )
+        self.declare_parameter(
+            "support_floor_ratio_max",
+            hsv_defaults["support_floor_ratio_max"],
+        )
+        self.declare_parameter(
+            "support_sector_black_ratio_min",
+            hsv_defaults["support_sector_black_ratio_min"],
+        )
+        self.declare_parameter(
+            "support_min_sectors", hsv_defaults["support_min_sectors"]
+        )
+        self.declare_parameter(
+            "edge_support_min_sectors",
+            hsv_defaults["edge_support_min_sectors"],
+        )
+        self.declare_parameter(
+            "support_min_visible_fraction",
+            hsv_defaults["support_min_visible_fraction"],
+        )
+        self.declare_parameter(
+            "edge_support_min_visible_fraction",
+            hsv_defaults["edge_support_min_visible_fraction"],
+        )
+        self.declare_parameter("floor_h_low", hsv_defaults["floor_h_low"])
+        self.declare_parameter("floor_h_high", hsv_defaults["floor_h_high"])
+        self.declare_parameter("floor_s_low", hsv_defaults["floor_s_low"])
+        self.declare_parameter("floor_s_high", hsv_defaults["floor_s_high"])
+        self.declare_parameter("floor_v_low", hsv_defaults["floor_v_low"])
+        self.declare_parameter("floor_v_high", hsv_defaults["floor_v_high"])
+
         self.declare_parameter("depth_threshold_m", 1.5)
         self.declare_parameter("depth_scale", 0.001)  # 16UC1 mm -> m
         # 먼 거리에서 작아진 공 마스크도 후보로 유지한다.
@@ -117,27 +171,27 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("max_circle_ratio_error", 0.45)
         # 화면 경계에 걸려 일부가 잘린 공은 면적과 원형도 조건을 완화한다.
         self.declare_parameter("edge_ball_margin_px", 3)
-        self.declare_parameter("edge_min_contour_area_ratio", 0.45)
-        self.declare_parameter("edge_max_circle_ratio_error", 0.80)
-        # 실제 공 지름은 약 5~6 cm이다. Depth와 CameraInfo로 영상에서
+        self.declare_parameter("edge_min_contour_area_ratio", 0.65)
+        self.declare_parameter("edge_max_circle_ratio_error", 0.65)
+        # 실제 공 지름은 약 5~7 cm이다. Depth와 CameraInfo로 영상에서
         # 예상되는 픽셀 반지름을 계산해 지나치게 크거나 작은 색상 물체를 제거한다.
         # 마스크가 공 전체를 채우지 않을 수 있어 초기 허용 범위는 넉넉하게 둔다.
         self.declare_parameter("ball_diameter_min_m", 0.050)
-        self.declare_parameter("ball_diameter_max_m", 0.060)
+        self.declare_parameter("ball_diameter_max_m", 0.070)
         self.declare_parameter("radius_size_min_ratio", 0.45)
         self.declare_parameter("radius_size_max_ratio", 1.70)
-        self.declare_parameter("edge_radius_size_min_ratio", 0.25)
-        self.declare_parameter("edge_radius_size_max_ratio", 2.00)
+        self.declare_parameter("edge_radius_size_min_ratio", 0.60)
+        self.declare_parameter("edge_radius_size_max_ratio", 1.50)
         # 최소 외접원 면적뿐 아니라 contour 둘레 기반 원형도와 bbox 비율도 검사한다.
         self.declare_parameter("min_circularity", 0.55)
-        self.declare_parameter("edge_min_circularity", 0.30)
+        self.declare_parameter("edge_min_circularity", 0.48)
         self.declare_parameter("min_aspect_ratio", 0.55)
         self.declare_parameter("max_aspect_ratio", 1.80)
-        self.declare_parameter("edge_min_aspect_ratio", 0.30)
-        self.declare_parameter("edge_max_aspect_ratio", 3.30)
+        self.declare_parameter("edge_min_aspect_ratio", 0.45)
+        self.declare_parameter("edge_max_aspect_ratio", 2.20)
         self.declare_parameter("morph_kernel_size", 5)
         self.declare_parameter("depth_patch_radius", 1)
-        self.declare_parameter("realsense_hold_frames", 10)
+        self.declare_parameter("realsense_hold_frames", 3)
 
         # CameraInfo를 아직 받지 못했을 때 사용할 선배 코드의 기본 내부 파라미터
         self.declare_parameter("fallback_fx", 607.0)
@@ -149,6 +203,7 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("publish_realsense_debug_image", True)
         self.declare_parameter("show_realsense_window", False)
         self.declare_parameter("debug_mask_preview_width", 96)
+        self.declare_parameter("debug_publish_every_n_frames", 2)
 
         # =========================================================
         # 웹캠 기하 파라미터
@@ -214,6 +269,46 @@ class BallVisionFusionNode(Node):
         self.s_high = int(self.get_parameter("s_high").value)
         self.v_low = int(self.get_parameter("v_low").value)
         self.v_high = int(self.get_parameter("v_high").value)
+
+        self.support_diameter_m = float(
+            self.get_parameter("support_diameter_m").value
+        )
+        self.support_v_max = int(
+            self.get_parameter("support_v_max").value
+        )
+        self.support_black_ratio_min = float(
+            self.get_parameter("support_black_ratio_min").value
+        )
+        self.edge_support_black_ratio_min = float(
+            self.get_parameter("edge_support_black_ratio_min").value
+        )
+        self.support_ball_color_ratio_max = float(
+            self.get_parameter("support_ball_color_ratio_max").value
+        )
+        self.support_floor_ratio_max = float(
+            self.get_parameter("support_floor_ratio_max").value
+        )
+        self.support_sector_black_ratio_min = float(
+            self.get_parameter("support_sector_black_ratio_min").value
+        )
+        self.support_min_sectors = int(
+            self.get_parameter("support_min_sectors").value
+        )
+        self.edge_support_min_sectors = int(
+            self.get_parameter("edge_support_min_sectors").value
+        )
+        self.support_min_visible_fraction = float(
+            self.get_parameter("support_min_visible_fraction").value
+        )
+        self.edge_support_min_visible_fraction = float(
+            self.get_parameter("edge_support_min_visible_fraction").value
+        )
+        self.floor_h_low = int(self.get_parameter("floor_h_low").value)
+        self.floor_h_high = int(self.get_parameter("floor_h_high").value)
+        self.floor_s_low = int(self.get_parameter("floor_s_low").value)
+        self.floor_s_high = int(self.get_parameter("floor_s_high").value)
+        self.floor_v_low = int(self.get_parameter("floor_v_low").value)
+        self.floor_v_high = int(self.get_parameter("floor_v_high").value)
 
         self.depth_threshold_m = float(
             self.get_parameter("depth_threshold_m").value
@@ -304,6 +399,14 @@ class BallVisionFusionNode(Node):
             0,
             int(self.get_parameter("debug_mask_preview_width").value),
         )
+        self.debug_publish_every_n_frames = max(
+            1,
+            int(
+                self.get_parameter(
+                    "debug_publish_every_n_frames"
+                ).value
+            ),
+        )
 
         self.webcam_frame_width = float(
             self.get_parameter("webcam_frame_width").value
@@ -351,6 +454,7 @@ class BallVisionFusionNode(Node):
 
         self.ball_in_hand = False
         self.frame_count = 0
+        self.realsense_frame_count = 0
 
         # =========================================================
         # ROS I/O
@@ -368,7 +472,7 @@ class BallVisionFusionNode(Node):
         )
         self.rs_sync = ApproximateTimeSynchronizer(
             [self.rs_color_sub, self.rs_depth_sub],
-            queue_size=5,
+            queue_size=2,
             slop=0.1,
         )
         self.rs_sync.registerCallback(self.cb_realsense_images)
@@ -428,15 +532,32 @@ class BallVisionFusionNode(Node):
             f"BallResult output: {self.ball_result_topic}"
         )
 
-    def _load_hsv_defaults(self, path: Path) -> Dict[str, int]:
-        """Read the last accepted calibration once during node startup."""
-        fallback = {
+    def _load_hsv_defaults(self, path: Path) -> Dict[str, Any]:
+        """Read the last accepted ball/support/floor calibration at startup."""
+        fallback: Dict[str, Any] = {
             "h_low": 8,
             "h_high": 60,
             "s_low": 60,
             "s_high": 255,
             "v_low": 60,
             "v_high": 255,
+            "support_diameter_m": 0.150,
+            "support_v_max": 75,
+            "support_black_ratio_min": 0.30,
+            "edge_support_black_ratio_min": 0.25,
+            "support_ball_color_ratio_max": 0.15,
+            "support_floor_ratio_max": 0.35,
+            "support_sector_black_ratio_min": 0.18,
+            "support_min_sectors": 3,
+            "edge_support_min_sectors": 2,
+            "support_min_visible_fraction": 0.45,
+            "edge_support_min_visible_fraction": 0.12,
+            "floor_h_low": 0,
+            "floor_h_high": 12,
+            "floor_s_low": 50,
+            "floor_s_high": 255,
+            "floor_v_low": 25,
+            "floor_v_high": 255,
         }
         try:
             with path.open("r", encoding="utf-8") as file:
@@ -445,10 +566,29 @@ class BallVisionFusionNode(Node):
                 data.get("ball_vision_fusion", {})
                 .get("ros__parameters", {})
             )
-            values = {name: int(raw[name]) for name in fallback}
-        except (OSError, KeyError, TypeError, ValueError, yaml.YAMLError) as exc:
+            values = dict(fallback)
+            integer_names = {
+                "h_low", "h_high", "s_low", "s_high", "v_low", "v_high",
+                "support_v_max", "support_min_sectors",
+                "edge_support_min_sectors", "floor_h_low", "floor_h_high",
+                "floor_s_low", "floor_s_high", "floor_v_low", "floor_v_high",
+            }
+            for name, default in fallback.items():
+                raw_value = raw.get(name, default)
+                values[name] = (
+                    int(raw_value)
+                    if name in integer_names
+                    else float(raw_value)
+                )
+        except (
+            AttributeError,
+            OSError,
+            TypeError,
+            ValueError,
+            yaml.YAMLError,
+        ) as exc:
             self.get_logger().warning(
-                f"Could not load ball HSV from {path}: {exc}; "
+                f"Could not load ball detector calibration from {path}: {exc}; "
                 "using built-in defaults"
             )
             return fallback
@@ -457,18 +597,25 @@ class BallVisionFusionNode(Node):
             0 <= values["h_low"] <= values["h_high"] <= 179
             and 0 <= values["s_low"] <= values["s_high"] <= 255
             and 0 <= values["v_low"] <= values["v_high"] <= 255
+            and 0 <= values["support_v_max"] <= 255
+            and 0 <= values["floor_h_low"] <= 179
+            and 0 <= values["floor_h_high"] <= 179
+            and 0 <= values["floor_s_low"] <= values["floor_s_high"] <= 255
+            and 0 <= values["floor_v_low"] <= values["floor_v_high"] <= 255
         )
         if not valid:
             self.get_logger().warning(
-                f"Invalid ball HSV in {path}; using built-in defaults"
+                f"Invalid ball detector calibration in {path}; "
+                "using built-in defaults"
             )
             return fallback
 
         self.get_logger().info(
-            f"Loaded ball HSV from {path}: "
+            f"Loaded ball/support/floor calibration from {path}: "
             f"H={values['h_low']}..{values['h_high']} "
             f"S={values['s_low']}..{values['s_high']} "
-            f"V={values['v_low']}..{values['v_high']}"
+            f"V={values['v_low']}..{values['v_high']} "
+            f"support_V<={values['support_v_max']}"
         )
         return values
 
@@ -485,6 +632,21 @@ class BallVisionFusionNode(Node):
             dtype=np.uint8,
         )
 
+    def _support_config(self) -> BallSupportConfig:
+        return BallSupportConfig(
+            support_diameter_m=self.support_diameter_m,
+            support_v_max=self.support_v_max,
+            black_ratio_min=self.support_black_ratio_min,
+            edge_black_ratio_min=self.edge_support_black_ratio_min,
+            surrounding_ball_ratio_max=self.support_ball_color_ratio_max,
+            floor_ratio_max=self.support_floor_ratio_max,
+            sector_black_ratio_min=self.support_sector_black_ratio_min,
+            min_sectors=self.support_min_sectors,
+            edge_min_sectors=self.edge_support_min_sectors,
+            min_visible_fraction=self.support_min_visible_fraction,
+            edge_min_visible_fraction=self.edge_support_min_visible_fraction,
+        )
+
     def parameter_callback(self, params) -> SetParametersResult:
         values = {
             "h_low": self.h_low,
@@ -494,11 +656,27 @@ class BallVisionFusionNode(Node):
             "v_low": self.v_low,
             "v_high": self.v_high,
         }
+        floor_values = {
+            "floor_h_low": self.floor_h_low,
+            "floor_h_high": self.floor_h_high,
+            "floor_s_low": self.floor_s_low,
+            "floor_s_high": self.floor_s_high,
+            "floor_v_low": self.floor_v_low,
+            "floor_v_high": self.floor_v_high,
+        }
 
         for param in params:
             if param.name in values:
                 try:
                     values[param.name] = int(param.value)
+                except (TypeError, ValueError):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f"{param.name} must be an integer",
+                    )
+            elif param.name in floor_values:
+                try:
+                    floor_values[param.name] = int(param.value)
                 except (TypeError, ValueError):
                     return SetParametersResult(
                         successful=False,
@@ -514,6 +692,22 @@ class BallVisionFusionNode(Node):
                 successful=False,
                 reason="Invalid HSV range",
             )
+        if not (
+            0 <= floor_values["floor_h_low"] <= 179
+            and 0 <= floor_values["floor_h_high"] <= 179
+            and 0
+            <= floor_values["floor_s_low"]
+            <= floor_values["floor_s_high"]
+            <= 255
+            and 0
+            <= floor_values["floor_v_low"]
+            <= floor_values["floor_v_high"]
+            <= 255
+        ):
+            return SetParametersResult(
+                successful=False,
+                reason="Invalid floor HSV range",
+            )
 
         self.h_low = values["h_low"]
         self.h_high = values["h_high"]
@@ -521,6 +715,8 @@ class BallVisionFusionNode(Node):
         self.s_high = values["s_high"]
         self.v_low = values["v_low"]
         self.v_high = values["v_high"]
+        for name, value in floor_values.items():
+            setattr(self, name, value)
         self._update_hsv_arrays()
 
         for param in params:
@@ -528,17 +724,33 @@ class BallVisionFusionNode(Node):
                 self.depth_threshold_m = float(param.value)
             elif param.name == "min_contour_area":
                 self.min_contour_area = float(param.value)
-            elif param.name == "max_circle_ratio_error":
-                self.max_circle_ratio_error = float(param.value)
             elif param.name in {
+                "max_circle_ratio_error", "edge_max_circle_ratio_error",
+                "edge_min_contour_area_ratio",
                 "ball_diameter_min_m", "ball_diameter_max_m",
                 "radius_size_min_ratio", "radius_size_max_ratio",
                 "edge_radius_size_min_ratio", "edge_radius_size_max_ratio",
                 "min_circularity", "edge_min_circularity",
                 "min_aspect_ratio", "max_aspect_ratio",
                 "edge_min_aspect_ratio", "edge_max_aspect_ratio",
+                "support_diameter_m", "support_black_ratio_min",
+                "edge_support_black_ratio_min",
+                "support_ball_color_ratio_max", "support_floor_ratio_max",
+                "support_sector_black_ratio_min",
+                "support_min_visible_fraction",
+                "edge_support_min_visible_fraction",
             }:
                 setattr(self, param.name, float(param.value))
+            elif param.name in {
+                "support_v_max", "support_min_sectors",
+                "edge_support_min_sectors", "realsense_hold_frames",
+            }:
+                setattr(self, param.name, int(param.value))
+            elif param.name == "debug_publish_every_n_frames":
+                self.debug_publish_every_n_frames = max(
+                    1,
+                    int(param.value),
+                )
 
         return SetParametersResult(successful=True)
 
@@ -625,10 +837,23 @@ class BallVisionFusionNode(Node):
         roi_depth = depth[y_start:y_end, x_start:x_end]
 
         hsv = cv2.cvtColor(roi_color, cv2.COLOR_BGR2HSV)
-        raw_mask = cv2.inRange(
+        ball_color_mask = cv2.inRange(
             hsv,
             self.lower_hsv,
             self.upper_hsv,
+        )
+        floor_mask = hsv_range_mask(
+            hsv,
+            (
+                self.floor_h_low,
+                self.floor_s_low,
+                self.floor_v_low,
+            ),
+            (
+                self.floor_h_high,
+                self.floor_s_high,
+                self.floor_v_high,
+            ),
         )
 
         # depth가 0이거나 비정상이거나 설정 거리보다 먼 픽셀은 제거한다.
@@ -638,10 +863,11 @@ class BallVisionFusionNode(Node):
             | (roi_depth_m <= 0.0)
             | (roi_depth_m > self.depth_threshold_m)
         )
-        raw_mask[invalid_depth] = 0
+        depth_filtered_mask = ball_color_mask.copy()
+        depth_filtered_mask[invalid_depth] = 0
 
         mask = cv2.morphologyEx(
-            raw_mask,
+            depth_filtered_mask,
             cv2.MORPH_CLOSE,
             self.kernel,
         )
@@ -653,6 +879,9 @@ class BallVisionFusionNode(Node):
 
         detection = self._find_best_ball(
             mask=mask,
+            hsv=hsv,
+            ball_color_mask=ball_color_mask,
+            floor_mask=floor_mask,
             depth=depth,
             roi_x_start=x_start,
             roi_y_start=y_start,
@@ -686,17 +915,24 @@ class BallVisionFusionNode(Node):
             self.latest_realsense = self._empty_realsense_state()
             self.latest_realsense_time = now
 
-        if self.publish_realsense_debug_image or self.show_realsense_window:
+        self.realsense_frame_count += 1
+        publish_debug_now = (
+            self.publish_realsense_debug_image
+            and self.realsense_frame_count
+            % self.debug_publish_every_n_frames
+            == 0
+        )
+        if publish_debug_now or self.show_realsense_window:
             debug = self._draw_realsense_debug(
                 frame=frame,
-                raw_mask=raw_mask,
+                raw_mask=ball_color_mask,
                 mask=mask,
                 detection=detection,
                 held_previous=held_previous,
                 roi=(x_start, y_start, x_end, y_end),
             )
 
-            if self.publish_realsense_debug_image:
+            if publish_debug_now:
                 debug_msg = self.bridge.cv2_to_imgmsg(
                     debug,
                     encoding="bgr8",
@@ -711,22 +947,28 @@ class BallVisionFusionNode(Node):
     def _find_best_ball(
         self,
         mask: np.ndarray,
+        hsv: np.ndarray,
+        ball_color_mask: np.ndarray,
+        floor_mask: np.ndarray,
         depth: np.ndarray,
         roi_x_start: int,
         roi_y_start: int,
         frame_w: int,
         frame_h: int,
     ) -> Optional[Dict[str, Any]]:
+        """Find a physically plausible orange ball on its black support."""
         contours, _ = cv2.findContours(
             mask,
             cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE,
         )
 
-        best: Optional[
-            Tuple[float, np.ndarray, float, float, float, float, float,
-                  float, float, float]
-        ] = None
+        best: Optional[Dict[str, Any]] = None
+        support_config = self._support_config()
+        support_black_mask = black_support_mask(
+            hsv,
+            support_config.support_v_max,
+        )
 
         for contour in contours:
             area = float(cv2.contourArea(contour))
@@ -820,29 +1062,59 @@ class BallVisionFusionNode(Node):
             )
             radius_ratio = radius / max(expected_radius_mid, 1e-6)
             size_error = abs(radius_ratio - 1.0)
-            score = ratio_error + (1.0 - min(circularity, 1.0)) + size_error
+            support = evaluate_ball_support(
+                hsv=hsv,
+                ball_color_mask=ball_color_mask,
+                floor_mask=floor_mask,
+                center=(float(cx_roi), float(cy_roi)),
+                detected_radius_px=float(radius),
+                expected_ball_radius_px=float(expected_radius_mid),
+                depth_m=float(z_m),
+                focal_x_px=float(self.fx),
+                touches_edge=touches_edge,
+                config=support_config,
+                black_mask=support_black_mask,
+            )
+            if not bool(support["accepted"]):
+                continue
 
-            if best is None or score < best[0]:
-                best = (
-                    score,
-                    contour,
-                    float(cx_roi),
-                    float(cy_roi),
-                    float(radius),
-                    area,
-                    float(z_m),
-                    float(circularity),
-                    float(aspect_ratio),
-                    float(radius_ratio),
-                )
+            score = (
+                ratio_error
+                + (1.0 - min(circularity, 1.0))
+                + size_error
+                + 0.5 * (1.0 - float(support["black_ratio"]))
+                + float(support["surrounding_ball_ratio"])
+                + float(support["floor_ratio"])
+            )
+
+            candidate = {
+                "score": float(score),
+                "cx_roi": float(cx_roi),
+                "cy_roi": float(cy_roi),
+                "radius": float(radius),
+                "area": area,
+                "z_m": float(z_m),
+                "circularity": float(circularity),
+                "aspect_ratio": float(aspect_ratio),
+                "radius_ratio": float(radius_ratio),
+                "touches_edge": touches_edge,
+                "support": support,
+            }
+            if best is None or score < float(best["score"]):
+                best = candidate
 
         if best is None:
             return None
 
-        (
-            _score, _contour, cx_roi, cy_roi, radius, area, z_m,
-            circularity, aspect_ratio, radius_ratio,
-        ) = best
+        cx_roi = float(best["cx_roi"])
+        cy_roi = float(best["cy_roi"])
+        radius = float(best["radius"])
+        area = float(best["area"])
+        z_m = float(best["z_m"])
+        circularity = float(best["circularity"])
+        aspect_ratio = float(best["aspect_ratio"])
+        radius_ratio = float(best["radius_ratio"])
+        support = best["support"]
         circle_area = math.pi * radius * radius
         ratio_error = abs((area / circle_area) - 1.0)
         cx_img = int(round(cx_roi + roi_x_start))
@@ -876,6 +1148,17 @@ class BallVisionFusionNode(Node):
             "raw_circularity": float(circularity),
             "raw_aspect_ratio": float(aspect_ratio),
             "raw_radius_size_ratio": float(radius_ratio),
+            "raw_touches_edge": bool(best["touches_edge"]),
+            "raw_support_black_ratio": float(support["black_ratio"]),
+            "raw_support_ball_color_ratio": float(
+                support["surrounding_ball_ratio"]
+            ),
+            "raw_support_floor_ratio": float(support["floor_ratio"]),
+            "raw_support_sectors": int(support["qualified_sectors"]),
+            "raw_support_visible_fraction": float(
+                support["visible_fraction"]
+            ),
+            "raw_support_outer_radius": float(support["outer_radius_px"]),
             "held_previous_detection": False,
         }
 
@@ -943,8 +1226,18 @@ class BallVisionFusionNode(Node):
             cx = int(round(draw_state["raw_ball_x"]))
             cy = int(round(draw_state["raw_ball_y"]))
             radius = int(round(draw_state["raw_radius"]))
+            support_radius = int(
+                round(draw_state["raw_support_outer_radius"])
+            )
 
             cv2.circle(debug, (cx, cy), radius, color, 2)
+            cv2.circle(
+                debug,
+                (cx, cy),
+                max(1, support_radius),
+                (255, 180, 0),
+                1,
+            )
             cv2.circle(debug, (cx, cy), 4, (0, 0, 255), -1)
 
             state_text = "HOLD" if held_previous else "DETECTED"
@@ -953,8 +1246,15 @@ class BallVisionFusionNode(Node):
                 f"{draw_state['realsense_ball_distance_cm']:.1f}cm "
                 f"{draw_state['realsense_ball_angle_error']:+.1f}deg"
             )
+            support_text = (
+                f"support black={draw_state['raw_support_black_ratio']:.2f} "
+                f"floor={draw_state['raw_support_floor_ratio']:.2f} "
+                f"orange={draw_state['raw_support_ball_color_ratio']:.2f} "
+                f"sectors={draw_state['raw_support_sectors']}"
+            )
         else:
             text = "BALL MISS"
+            support_text = "support required for every RealSense ball"
 
         cv2.putText(
             debug,
@@ -977,6 +1277,16 @@ class BallVisionFusionNode(Node):
             (10, 58),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
+            (230, 230, 230),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            debug,
+            support_text,
+            (10, 82),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.42,
             (230, 230, 230),
             1,
             cv2.LINE_AA,
@@ -1020,6 +1330,13 @@ class BallVisionFusionNode(Node):
             "raw_circularity": None,
             "raw_aspect_ratio": None,
             "raw_radius_size_ratio": None,
+            "raw_touches_edge": False,
+            "raw_support_black_ratio": None,
+            "raw_support_ball_color_ratio": None,
+            "raw_support_floor_ratio": None,
+            "raw_support_sectors": None,
+            "raw_support_visible_fraction": None,
+            "raw_support_outer_radius": None,
             "held_previous_detection": False,
         }
 
@@ -1244,6 +1561,26 @@ class BallVisionFusionNode(Node):
                     self.latest_realsense["raw_aspect_ratio"],
                 "radius_size_ratio":
                     self.latest_realsense["raw_radius_size_ratio"],
+                "touches_edge":
+                    self.latest_realsense["raw_touches_edge"],
+                "support_black_ratio":
+                    self.latest_realsense[
+                        "raw_support_black_ratio"
+                    ],
+                "support_ball_color_ratio":
+                    self.latest_realsense[
+                        "raw_support_ball_color_ratio"
+                    ],
+                "support_floor_ratio":
+                    self.latest_realsense[
+                        "raw_support_floor_ratio"
+                    ],
+                "support_sectors":
+                    self.latest_realsense["raw_support_sectors"],
+                "support_visible_fraction":
+                    self.latest_realsense[
+                        "raw_support_visible_fraction"
+                    ],
                 "held_previous_detection":
                     self.latest_realsense[
                         "held_previous_detection"
