@@ -223,6 +223,7 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "yolo_model": "best.pt",
         "yolo_conf": 0.20,
         "line_conf": 0.35,
+        "line_display_conf": 0.40,
         "ball_conf": 0.20,
         "hurdle_conf": 0.35,
         "yolo_imgsz": 640,
@@ -278,6 +279,9 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "yolo_model": gs("yolo", "model", defaults["yolo_model"]),
         "yolo_conf": gf("yolo", "conf", defaults["yolo_conf"]),
         "line_conf": gf("yolo", "line_conf", defaults["line_conf"]),
+        "line_display_conf": gf(
+            "yolo", "line_display_conf", defaults["line_display_conf"]
+        ),
         "ball_conf": gf("yolo", "ball_conf", defaults["ball_conf"]),
         "hurdle_conf": gf("yolo", "hurdle_conf", defaults["hurdle_conf"]),
         "yolo_imgsz": gi("yolo", "imgsz", defaults["yolo_imgsz"]),
@@ -559,6 +563,81 @@ def make_vision_payload(dets: list[ObjectDetection], line_points: list[tuple[flo
     payload = make_line_payload(line_points, frame_w, frame_h)
     payload.update(best_object_payload(dets, cfg, "ball", frame_w, frame_h))
     payload.update(best_object_payload(dets, cfg, "hurdle", frame_w, frame_h))
+    add_hurdle_line_intersection(payload, line_points, frame_w, frame_h)
+    return payload
+
+
+def add_hurdle_line_intersection(
+    payload: dict,
+    line_points: list[tuple[float, float]],
+    frame_w: int,
+    frame_h: int,
+) -> dict:
+    """웹캠 라인과 허들 중심축의 교차점 및 부호 있는 방위각을 계산한다.
+
+    각도 기준은 기존 라인 ``follow_angle``과 같다. 화면 아래 중앙을 로봇
+    중심으로 보고 정면(화면 위쪽)을 0도로 두며, 왼쪽은 음수, 오른쪽은
+    양수다. 라인 피팅에 점이 두 개 이상 필요하고, 계산된 교차점이 실제
+    허들 bbox 안에 있을 때만 유효한 교차점으로 취급한다.
+    """
+    payload.update({
+        "hurdle_line_intersection_valid": False,
+        "hurdle_line_intersection_x": -1.0,
+        "hurdle_line_intersection_y": -1.0,
+        "hurdle_intersection_angle_deg": 0.0,
+        "hurdle_intersection_sign": 0,
+        "hurdle_intersection_direction": "unknown",
+    })
+
+    if not bool(payload.get("hurdle_detected", False)) or len(line_points) < 2:
+        return payload
+
+    bbox = payload.get("hurdle_bbox", [])
+    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
+        return payload
+
+    try:
+        x1, y1, x2, y2 = [float(value) for value in bbox]
+    except (TypeError, ValueError):
+        return payload
+    if not all(math.isfinite(value) for value in (x1, y1, x2, y2)):
+        return payload
+
+    hurdle_y = (y1 + y2) / 2.0
+    coeffs = fit_line(line_points) if len(line_points) <= 3 else fit_poly2(line_points)
+    if coeffs is None:
+        return payload
+
+    intersection_x = float(np.polyval(coeffs, hurdle_y))
+    if not math.isfinite(intersection_x):
+        return payload
+
+    # 무한 직선끼리의 교차가 아니라 화면 속 허들 bbox 위의 실제 교차인지 확인한다.
+    if not (
+        0.0 <= intersection_x < float(frame_w)
+        and 0.0 <= hurdle_y < float(frame_h)
+        and min(x1, x2) <= intersection_x <= max(x1, x2)
+    ):
+        return payload
+
+    robot_x = frame_w / 2.0
+    robot_y = float(frame_h)
+    signed_angle = float(
+        math.degrees(math.atan2(intersection_x - robot_x, robot_y - hurdle_y))
+    )
+    if not math.isfinite(signed_angle):
+        return payload
+
+    sign = -1 if signed_angle < 0.0 else (1 if signed_angle > 0.0 else 0)
+    direction = "left" if sign < 0 else ("right" if sign > 0 else "center")
+    payload.update({
+        "hurdle_line_intersection_valid": True,
+        "hurdle_line_intersection_x": intersection_x,
+        "hurdle_line_intersection_y": hurdle_y,
+        "hurdle_intersection_angle_deg": signed_angle,
+        "hurdle_intersection_sign": sign,
+        "hurdle_intersection_direction": direction,
+    })
     return payload
 
 
@@ -570,12 +649,27 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
     vis = frame.copy()
     h, w = vis.shape[:2]
     roi_top, roi_bottom, roi_left, roi_right = roi_box
+    line_display_conf = float(cfg.get("line_display_conf", 0.40))
+    display_line_points = [
+        (float(d.cx), float(d.cy))
+        for d in dets
+        if (
+            d.name == cfg["line_class"]
+            and d.conf > line_display_conf
+            and roi_left <= d.cx <= roi_right
+            and roi_top <= d.cy <= roi_bottom
+        )
+    ]
+    display_line_points.sort(key=lambda point: -point[1])
 
     cv2.rectangle(vis, (roi_left, roi_top), (roi_right, roi_bottom), (80, 80, 80), 2)
     cv2.line(vis, (w // 2, h), (w // 2, roi_top), (200, 200, 200), 1, cv2.LINE_AA)
 
     # YOLO boxes
     for d in dets:
+        # confidence 0.40 이하는 라인 판단에는 사용할 수 있지만 화면에는 숨긴다.
+        if d.name == cfg["line_class"] and d.conf <= line_display_conf:
+            continue
         # Do not draw partially visible ball/hurdle boxes.
         # line is not filtered by default because bottom line markers are often partially visible.
         if not visible_enough(d, w, h, cfg):
@@ -586,7 +680,8 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
         elif d.name == "ball":
             color = (0, 180, 255)
         elif d.name == "hurdle":
-            color = (255, 100, 0)
+            # OpenCV는 BGR 순서. LightSkyBlue(RGB 135, 206, 250).
+            color = (250, 206, 135)
         else:
             color = (180, 180, 180)
 
@@ -596,7 +691,7 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
 
     # raw line bbox centers
-    for cx, cy in raw_line_points:
+    for cx, cy in display_line_points:
         cv2.circle(vis, (int(cx), int(cy)), 4, (255, 255, 255), -1)
 
     # target point
@@ -614,13 +709,13 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
 
     # 2~3개는 직선, 4개 이상은 이차곡선으로 표시한다. 두 경우 모두
     # 실제 검출점의 y 범위에서만 그려 데이터가 없는 영역으로 외삽하지 않는다.
-    if len(raw_line_points) >= 2:
-        y_min = max(roi_top, int(math.floor(min(y for _x, y in raw_line_points))))
-        y_max = min(roi_bottom - 1, int(math.ceil(max(y for _x, y in raw_line_points))))
+    if len(display_line_points) >= 2:
+        y_min = max(roi_top, int(math.floor(min(y for _x, y in display_line_points))))
+        y_max = min(roi_bottom - 1, int(math.ceil(max(y for _x, y in display_line_points))))
         draw_coeffs = (
-            fit_line(raw_line_points)
-            if len(raw_line_points) <= 3
-            else fit_poly2(raw_line_points)
+            fit_line(display_line_points)
+            if len(display_line_points) <= 3
+            else fit_poly2(display_line_points)
         )
         if draw_coeffs is not None and y_max > y_min:
             pts_curve = []
@@ -633,70 +728,125 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
                     vis,
                     [np.array(pts_curve, dtype=np.int32).reshape(-1, 1, 2)],
                     False,
-                    (255, 0, 255),
+                    (180, 140, 255),  # medium pastel pink (OpenCV BGR)
                     2,
                     cv2.LINE_AA,
                 )
 
-    # text panel - keep the font size, but fit the panel to its contents.
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 0.36
-    font_thickness = 1
-    lines = [
+    # 라인-허들 교차점과 로봇 중심에서 교차점까지의 signed-angle 벡터.
+    if bool(payload.get("hurdle_line_intersection_valid", False)):
+        cross_x = int(round(float(payload["hurdle_line_intersection_x"])))
+        cross_y = int(round(float(payload["hurdle_line_intersection_y"])))
+        robot_center = (w // 2, h - 1)
+        cross_point = (cross_x, cross_y)
+        sky_blue = (250, 206, 135)
+        cv2.line(vis, robot_center, cross_point, sky_blue, 2, cv2.LINE_AA)
+        cv2.drawMarker(
+            vis,
+            cross_point,
+            (255, 255, 255),
+            cv2.MARKER_CROSS,
+            24,
+            3,
+            cv2.LINE_AA,
+        )
+        cv2.circle(vis, cross_point, 8, sky_blue, 2, cv2.LINE_AA)
+
+    def draw_text_panel(
+        panel_lines,
+        panel_y,
+        font_scale,
+        border_color,
+        align="left",
+    ):
+        """화면 좌/우 상단에 내용 크기에 맞는 작은 정보 패널을 그린다."""
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_thickness = 1
+        padding_x, padding_y = 5, 4
+        line_gap = 3
+        text_sizes = [
+            cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+            for text in panel_lines
+        ]
+        text_height = max(size[1] for size in text_sizes)
+        line_height = text_height + line_gap
+        panel_width = max(size[0] for size in text_sizes) + 2 * padding_x
+        panel_height = (
+            2 * padding_y
+            + len(panel_lines) * text_height
+            + (len(panel_lines) - 1) * line_gap
+        )
+        panel_x = 4 if align == "left" else max(4, w - panel_width - 4)
+        panel_right = min(w - 1, panel_x + panel_width)
+        panel_bottom = min(h - 1, panel_y + panel_height)
+
+        cv2.rectangle(
+            vis,
+            (panel_x, panel_y),
+            (panel_right, panel_bottom),
+            (20, 20, 20),
+            -1,
+        )
+        cv2.rectangle(
+            vis,
+            (panel_x, panel_y),
+            (panel_right, panel_bottom),
+            border_color,
+            1,
+        )
+
+        text_x = panel_x + padding_x
+        first_baseline_y = panel_y + padding_y + text_height
+        for index, text in enumerate(panel_lines):
+            cv2.putText(
+                vis,
+                text,
+                (text_x, first_baseline_y + index * line_height),
+                font,
+                font_scale,
+                (255, 255, 255),
+                font_thickness,
+                cv2.LINE_AA,
+            )
+
+    # 허들 정보는 오른쪽 상단의 작은 전용 패널에만 표시한다.
+    hurdle_detected = bool(payload.get("hurdle_detected", False))
+    hurdle_lines = [
+        (
+            f"HURDLE:{'YES' if hurdle_detected else 'NO'} "
+            f"conf:{float(payload.get('hurdle_conf', 0.0)):.2f}"
+        ),
+        (
+            f"angle:{payload['hurdle_intersection_angle_deg']:+.1f}deg "
+            f"{str(payload['hurdle_intersection_direction']).upper()}"
+            if payload.get("hurdle_line_intersection_valid", False)
+            else "angle:N/A"
+        ),
+    ]
+    draw_text_panel(
+        hurdle_lines,
+        panel_y=4,
+        font_scale=0.32,
+        border_color=(250, 206, 135),
+        align="right",
+    )
+
+    # 기존 라인 정보는 별도 패널로 왼쪽 상단에 유지한다.
+    line_lines = [
         f"st:{payload['status']} {payload['status_name'][:12]}",
         f"pc:{payload['point_count']} dist:{payload['line_distance']:+.0f}px",
         f"ang:{payload['line_angle']:+.1f} tan:{payload['tangent_angle']:+.1f}",
         f"a:{payload['curve_a']:+.1e} f_ang:{payload['follow_angle']:+.1f}",
         f"tar:({payload['target_x']:.0f},{payload['target_y']:.0f}) fd:{payload['follow_distance']:.0f}",
-        f"B:{int(payload['ball_detected'])} H:{int(payload['hurdle_detected'])}",
+        f"B:{int(payload['ball_detected'])}",
     ]
-
-    panel_x, panel_y = 4, 4
-    padding_x, padding_y = 6, 5
-    line_gap = 4
-    text_sizes = [
-        cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-        for text in lines
-    ]
-    text_height = max(size[1] for size in text_sizes)
-    line_height = text_height + line_gap
-    panel_width = max(size[0] for size in text_sizes) + 2 * padding_x
-    panel_height = (
-        2 * padding_y
-        + len(lines) * text_height
-        + (len(lines) - 1) * line_gap
+    draw_text_panel(
+        line_lines,
+        panel_y=4,
+        font_scale=0.36,
+        border_color=(180, 140, 255),
+        align="left",
     )
-    panel_right = min(w - 1, panel_x + panel_width)
-    panel_bottom = min(h - 1, panel_y + panel_height)
-
-    cv2.rectangle(
-        vis,
-        (panel_x, panel_y),
-        (panel_right, panel_bottom),
-        (20, 20, 20),
-        -1,
-    )
-    cv2.rectangle(
-        vis,
-        (panel_x, panel_y),
-        (panel_right, panel_bottom),
-        (255, 0, 255),
-        1,
-    )
-
-    text_x = panel_x + padding_x
-    first_baseline_y = panel_y + padding_y + text_height
-    for i, text in enumerate(lines):
-        cv2.putText(
-            vis,
-            text,
-            (text_x, first_baseline_y + i * line_height),
-            font,
-            font_scale,
-            (230, 230, 230),
-            font_thickness,
-            cv2.LINE_AA,
-        )
 
     return vis
 
@@ -846,7 +996,9 @@ def main_ros2(ini_path: str = "settings.ini"):
                     f"dist={payload['line_distance']:+.0f}px "
                     f"ang={payload['line_angle']:+.1f} "
                     f"a={payload['curve_a']:+.2e} "
-                    f"ball={payload['ball_detected']} hurdle={payload['hurdle_detected']}"
+                    f"ball={payload['ball_detected']} hurdle={payload['hurdle_detected']} "
+                    f"h_cross={payload['hurdle_line_intersection_valid']} "
+                    f"h_ang={payload['hurdle_intersection_angle_deg']:+.1f}"
                 )
 
     rclpy.init()
