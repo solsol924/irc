@@ -18,7 +18,7 @@ Mouse
 
 Keys
 ----
-* b / g       : select ball / hoop
+* b / k / f / g: select ball / black support / red floor / hoop
 * SPACE       : add current ROI samples to the selected target's sample bank
 * a           : auto-fit HSV bounds from sample bank (or current ROI)
 * d           : toggle detection preview using the fitted/current values
@@ -42,6 +42,7 @@ Notes
   your topic encoding and change this parameter when necessary.
 * environment_label is optional and is used only in saved records. It does not
   select or alter HSV values. Example: -p environment_label:=gym_A
+
 """
 
 from __future__ import annotations
@@ -63,6 +64,13 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from sensor_msgs.msg import CameraInfo, Image
 
+from ball_detector_core import (
+    BallSupportConfig,
+    black_support_mask,
+    evaluate_ball_support,
+    hsv_range_mask,
+)
+
 
 # -----------------------------------------------------------------------------
 # Easy-to-edit calibration heuristics
@@ -75,6 +83,8 @@ S_LOW_MARGIN = 15
 S_HIGH_MARGIN = 5
 V_LOW_MARGIN = 15
 V_HIGH_MARGIN = 5
+SUPPORT_V_PERCENTILE = 95.0
+SUPPORT_V_MARGIN = 10
 MAX_BANK_PIXELS = 200_000
 MAX_ROI_PIXELS_PER_ADD = 20_000
 UNDEREXPOSED_V = 25
@@ -88,24 +98,24 @@ BALL_PREVIEW_DEPTH_MAX_MM = 1_500.0
 BALL_PREVIEW_MIN_AREA = 300.0
 BALL_PREVIEW_MAX_CIRCLE_RATIO_ERROR = 0.45
 BALL_PREVIEW_EDGE_MARGIN_PX = 3
-BALL_PREVIEW_EDGE_MIN_AREA_RATIO = 0.45
-BALL_PREVIEW_EDGE_MAX_CIRCLE_RATIO_ERROR = 0.80
+BALL_PREVIEW_EDGE_MIN_AREA_RATIO = 0.65
+BALL_PREVIEW_EDGE_MAX_CIRCLE_RATIO_ERROR = 0.65
 BALL_PREVIEW_DIAMETER_MIN_M = 0.050
-BALL_PREVIEW_DIAMETER_MAX_M = 0.060
+BALL_PREVIEW_DIAMETER_MAX_M = 0.070
 BALL_PREVIEW_RADIUS_MIN_RATIO = 0.45
 BALL_PREVIEW_RADIUS_MAX_RATIO = 1.70
-BALL_PREVIEW_EDGE_RADIUS_MIN_RATIO = 0.25
-BALL_PREVIEW_EDGE_RADIUS_MAX_RATIO = 2.00
+BALL_PREVIEW_EDGE_RADIUS_MIN_RATIO = 0.60
+BALL_PREVIEW_EDGE_RADIUS_MAX_RATIO = 1.50
 BALL_PREVIEW_MIN_CIRCULARITY = 0.55
-BALL_PREVIEW_EDGE_MIN_CIRCULARITY = 0.30
+BALL_PREVIEW_EDGE_MIN_CIRCULARITY = 0.48
 BALL_PREVIEW_MIN_ASPECT = 0.55
 BALL_PREVIEW_MAX_ASPECT = 1.80
-BALL_PREVIEW_EDGE_MIN_ASPECT = 0.30
-BALL_PREVIEW_EDGE_MAX_ASPECT = 3.30
+BALL_PREVIEW_EDGE_MIN_ASPECT = 0.45
+BALL_PREVIEW_EDGE_MAX_ASPECT = 2.20
 BALL_PREVIEW_MORPH_SIZE = 5
-BALL_PREVIEW_HOLD_FRAMES = 10
+BALL_PREVIEW_HOLD_FRAMES = 3
 
-TARGETS = ("ball", "hoop")
+TARGETS = ("ball", "support", "floor", "hoop")
 
 MAIN_WINDOW = "Calibration"
 MASK_WINDOW = "Masks"
@@ -128,7 +138,7 @@ TRACKBARS = {
 
 
 def noop(_: int) -> None:
-    """OpenCV trackbar callback placeholder."""
+    """Provide a trackbar callback placeholder."""
 
 
 def clamp_int(value: float, low: int, high: int) -> int:
@@ -213,7 +223,7 @@ def hue_mask(hsv: np.ndarray, profile: Dict[str, Any]) -> np.ndarray:
 
 
 def default_profile(target: str) -> Dict[str, Any]:
-    """Placeholder profile. Replace by calibration data, not guesswork."""
+    """Return a placeholder profile to be replaced by calibration data."""
     common: Dict[str, Any] = {
         "h_low": 8,
         "h_high": 60,
@@ -228,24 +238,64 @@ def default_profile(target: str) -> Dict[str, Any]:
         "min_area": 120,
         "ball_circularity_min": 0.45,
     }
-    if target == "hoop":
+    if target == "support":
+        # Black hue is unstable; production uses the fitted V high only.
+        common.update(
+            {
+                "h_low": 0,
+                "h_high": 179,
+                "s_low": 0,
+                "s_high": 255,
+                "v_low": 0,
+                "v_high": 75,
+            }
+        )
+    elif target == "floor":
+        common.update(
+            {
+                "h_low": 0,
+                "h_high": 12,
+                "s_low": 50,
+                "s_high": 255,
+                "v_low": 25,
+                "v_high": 255,
+            }
+        )
+    elif target == "hoop":
         common["min_area"] = 250
         # The calibrator does not assume whether you detect rim or backboard.
         # Shape validation should be specialized in the production detector.
     return common
 
 
+def default_detector_settings() -> Dict[str, Any]:
+    """Support geometry and context thresholds shared with production."""
+    return {
+        "support_diameter_m": 0.150,
+        "support_black_ratio_min": 0.30,
+        "edge_support_black_ratio_min": 0.25,
+        "support_ball_color_ratio_max": 0.15,
+        "support_floor_ratio_max": 0.35,
+        "support_sector_black_ratio_min": 0.18,
+        "support_min_sectors": 3,
+        "edge_support_min_sectors": 2,
+        "support_min_visible_fraction": 0.45,
+        "edge_support_min_visible_fraction": 0.12,
+    }
+
+
 def default_store() -> Dict[str, Any]:
     return {
-        "version": 2,
+        "version": 3,
         "profiles": {
             target: default_profile(target)
             for target in TARGETS
         },
+        "detector": default_detector_settings(),
         "metadata": {
             "note": (
-                "One current profile per target. Tune it at the venue that is "
-                "present now; snapshots keep the scene measurements."
+                "Separate ball, black-support, floor and hoop profiles. "
+                "Tune at the venue that is present now."
             ),
         },
     }
@@ -285,7 +335,12 @@ class ProfileStore:
                 base.update(loaded)
             profiles[target] = base
 
-        self.data["version"] = 2
+        detector = default_detector_settings()
+        loaded_detector = self.data.get("detector", {})
+        if isinstance(loaded_detector, dict):
+            detector.update(loaded_detector)
+        self.data["detector"] = detector
+        self.data["version"] = 3
         self.data.setdefault("metadata", {})
 
     def load(self) -> None:
@@ -317,6 +372,9 @@ class ProfileStore:
 
     def set(self, target: str, profile: Dict[str, Any]) -> None:
         self.data["profiles"][target] = dict(profile)
+
+    def get_detector(self) -> Dict[str, Any]:
+        return dict(self.data["detector"])
 
 
 class HSVCalibratorNode(Node):
@@ -359,7 +417,7 @@ class HSVCalibratorNode(Node):
             str(Path.home() / ".ros" / "vision" / "calibration"),
         )
         self.declare_parameter("depth_scale_to_mm", 1.0)
-        self.declare_parameter("sync_queue", 10)
+        self.declare_parameter("sync_queue", 3)
         self.declare_parameter("sync_slop", 0.08)
         self.declare_parameter("target", "ball")
         self.declare_parameter("environment_label", "current")
@@ -449,6 +507,7 @@ class HSVCalibratorNode(Node):
         self.cy_intr = 239.4
         self.camera_info_received = False
         self.preview_last_ball: Optional[Dict[str, Any]] = None
+        self.preview_last_rejection: Optional[Dict[str, Any]] = None
         self.preview_ball_lost_frames = BALL_PREVIEW_HOLD_FRAMES
 
         self.last_frame_time = time.monotonic()
@@ -468,7 +527,7 @@ class HSVCalibratorNode(Node):
             f"Calibration node ready | color={color_topic} | depth={depth_topic}"
         )
         self.get_logger().info(
-            "Keys: b/g target, SPACE add ROI, a auto-fit, d preview, "
+            "Keys: b/k/f/g target, SPACE add ROI, a auto-fit, d preview, "
             "r restore pre-fit, n new, x clear bank, s save, l load, "
             "i snapshot, q quit"
         )
@@ -623,6 +682,7 @@ class HSVCalibratorNode(Node):
 
     def _reset_preview_state(self) -> None:
         self.preview_last_ball = None
+        self.preview_last_rejection = None
         self.preview_ball_lost_frames = BALL_PREVIEW_HOLD_FRAMES
 
     def _toggle_detection_preview(self) -> None:
@@ -795,11 +855,12 @@ class HSVCalibratorNode(Node):
         }
 
     def _frame_metrics(self, hsv: np.ndarray) -> Dict[str, Any]:
-        value = hsv[:, :, 2].astype(np.float32)
+        value = hsv[:, :, 2]
+        p10, p50, p90 = np.percentile(value, (10, 50, 90))
         return {
-            "frame_v_p10": float(np.percentile(value, 10)),
-            "frame_v_p50": float(np.percentile(value, 50)),
-            "frame_v_p90": float(np.percentile(value, 90)),
+            "frame_v_p10": float(p10),
+            "frame_v_p50": float(p50),
+            "frame_v_p90": float(p90),
             "underexposed_pct": float(np.mean(value <= UNDEREXPOSED_V) * 100.0),
             "overexposed_pct": float(np.mean(value >= OVEREXPOSED_V) * 100.0),
         }
@@ -884,38 +945,49 @@ class HSVCalibratorNode(Node):
         s = pixels[:, 1].astype(np.float32)
         v = pixels[:, 2].astype(np.float32)
 
-        hue_valid = h[(s > 10) & (v > 10)]
-        if hue_valid.size < 20:
-            hue_valid = h
-        h_low, h_high = shortest_hue_interval(hue_valid)
-
-        s_low = clamp_int(
-            np.percentile(s, SV_LOW_PERCENTILE) - S_LOW_MARGIN,
-            0,
-            255,
-        )
-        s_high = clamp_int(
-            np.percentile(s, SV_HIGH_PERCENTILE) + S_HIGH_MARGIN,
-            0,
-            255,
-        )
-        v_low = clamp_int(
-            np.percentile(v, SV_LOW_PERCENTILE) - V_LOW_MARGIN,
-            0,
-            255,
-        )
-        # A brighter view of the same orange ball should not be rejected just
-        # because it exceeds the sampled V maximum.  Keep the fitted lower
-        # bound, but leave the ball's brightness ceiling fully open.
-        v_high = (
-            255
-            if key == "ball"
-            else clamp_int(
-                np.percentile(v, SV_HIGH_PERCENTILE) + V_HIGH_MARGIN,
+        if key == "support":
+            # H is undefined for black and S varies with reflections.  Keep
+            # both fully open and fit only a robust upper brightness bound.
+            h_low, h_high = 0, 179
+            s_low, s_high = 0, 255
+            v_low = 0
+            v_high = clamp_int(
+                np.percentile(v, SUPPORT_V_PERCENTILE) + SUPPORT_V_MARGIN,
                 0,
                 255,
             )
-        )
+        else:
+            hue_valid = h[(s > 10) & (v > 10)]
+            if hue_valid.size < 20:
+                hue_valid = h
+            h_low, h_high = shortest_hue_interval(hue_valid)
+
+            s_low = clamp_int(
+                np.percentile(s, SV_LOW_PERCENTILE) - S_LOW_MARGIN,
+                0,
+                255,
+            )
+            s_high = clamp_int(
+                np.percentile(s, SV_HIGH_PERCENTILE) + S_HIGH_MARGIN,
+                0,
+                255,
+            )
+            v_low = clamp_int(
+                np.percentile(v, SV_LOW_PERCENTILE) - V_LOW_MARGIN,
+                0,
+                255,
+            )
+            # A brighter view of the same orange ball should not be rejected
+            # just because it exceeds the sampled V maximum.
+            v_high = (
+                255
+                if key == "ball"
+                else clamp_int(
+                    np.percentile(v, SV_HIGH_PERCENTILE) + V_HIGH_MARGIN,
+                    0,
+                    255,
+                )
+            )
 
         cv2.setTrackbarPos("H low", CONTROL_WINDOW, h_low)
         cv2.setTrackbarPos("H high", CONTROL_WINDOW, h_high)
@@ -929,11 +1001,17 @@ class HSVCalibratorNode(Node):
         self.view_mode = "calibration"
         self._reset_preview_state()
 
-        wrap_text = " (wraps through 0)" if h_low > h_high else ""
-        self.get_logger().info(
-            f"Auto-fit {key}: H={h_low}..{h_high}{wrap_text}, "
-            f"S={s_low}..{s_high}, V={v_low}..{v_high}"
-        )
+        if key == "support":
+            self.get_logger().info(
+                f"Auto-fit support: black V <= {v_high} "
+                f"(p{SUPPORT_V_PERCENTILE:.0f} + {SUPPORT_V_MARGIN})"
+            )
+        else:
+            wrap_text = " (wraps through 0)" if h_low > h_high else ""
+            self.get_logger().info(
+                f"Auto-fit {key}: H={h_low}..{h_high}{wrap_text}, "
+                f"S={s_low}..{s_high}, V={v_low}..{v_high}"
+            )
 
     # --------------------------------------------------------------- Masks --
     def _process_masks(
@@ -1020,9 +1098,45 @@ class HSVCalibratorNode(Node):
             return None
         return float(np.median(valid) * 0.001)
 
+    def _preview_support_config(self) -> BallSupportConfig:
+        settings = self.store.get_detector()
+        support_profile = self.store.get("support")
+        return BallSupportConfig(
+            support_diameter_m=float(settings["support_diameter_m"]),
+            support_v_max=int(support_profile["v_high"]),
+            black_ratio_min=float(
+                settings["support_black_ratio_min"]
+            ),
+            edge_black_ratio_min=float(
+                settings["edge_support_black_ratio_min"]
+            ),
+            surrounding_ball_ratio_max=float(
+                settings["support_ball_color_ratio_max"]
+            ),
+            floor_ratio_max=float(
+                settings["support_floor_ratio_max"]
+            ),
+            sector_black_ratio_min=float(
+                settings["support_sector_black_ratio_min"]
+            ),
+            min_sectors=int(settings["support_min_sectors"]),
+            edge_min_sectors=int(
+                settings["edge_support_min_sectors"]
+            ),
+            min_visible_fraction=float(
+                settings["support_min_visible_fraction"]
+            ),
+            edge_min_visible_fraction=float(
+                settings["edge_support_min_visible_fraction"]
+            ),
+        )
+
     def _find_production_ball(
         self,
         mask: np.ndarray,
+        hsv: np.ndarray,
+        ball_color_mask: np.ndarray,
+        floor_mask: np.ndarray,
         depth_mm: np.ndarray,
     ) -> Optional[Dict[str, Any]]:
         """Mirror the current IRC RealSense ball acceptance checks."""
@@ -1033,6 +1147,12 @@ class HSVCalibratorNode(Node):
         )
         frame_h, frame_w = mask.shape[:2]
         best: Optional[Dict[str, Any]] = None
+        support_config = self._preview_support_config()
+        support_black_mask = black_support_mask(
+            hsv,
+            support_config.support_v_max,
+        )
+        self.preview_last_rejection = None
 
         for contour in contours:
             area = float(cv2.contourArea(contour))
@@ -1117,10 +1237,40 @@ class HSVCalibratorNode(Node):
 
             expected_mid = 0.5 * (expected_min + expected_max)
             radius_ratio = radius / max(expected_mid, 1e-6)
+            support = evaluate_ball_support(
+                hsv=hsv,
+                ball_color_mask=ball_color_mask,
+                floor_mask=floor_mask,
+                center=(float(cx_float), float(cy_float)),
+                detected_radius_px=float(radius),
+                expected_ball_radius_px=float(expected_mid),
+                depth_m=float(z_m),
+                focal_x_px=float(self.fx),
+                touches_edge=touches_edge,
+                config=support_config,
+                black_mask=support_black_mask,
+            )
+            if not bool(support["accepted"]):
+                rejection = {
+                    **support,
+                    "circularity": float(circularity),
+                    "radius_ratio": float(radius / max(expected_mid, 1e-6)),
+                }
+                if (
+                    self.preview_last_rejection is None
+                    or float(rejection["black_ratio"])
+                    > float(self.preview_last_rejection["black_ratio"])
+                ):
+                    self.preview_last_rejection = rejection
+                continue
+
             score = (
                 ratio_error
                 + (1.0 - min(circularity, 1.0))
                 + abs(radius_ratio - 1.0)
+                + 0.5 * (1.0 - float(support["black_ratio"]))
+                + float(support["surrounding_ball_ratio"])
+                + float(support["floor_ratio"])
             )
             if best is not None and score >= float(best["score"]):
                 continue
@@ -1138,6 +1288,17 @@ class HSVCalibratorNode(Node):
                 "circularity": float(circularity),
                 "aspect": float(aspect),
                 "radius_ratio": float(radius_ratio),
+                "touches_edge": touches_edge,
+                "support_black_ratio": float(support["black_ratio"]),
+                "support_ball_ratio": float(
+                    support["surrounding_ball_ratio"]
+                ),
+                "support_floor_ratio": float(support["floor_ratio"]),
+                "support_sectors": int(support["qualified_sectors"]),
+                "support_visible_fraction": float(
+                    support["visible_fraction"]
+                ),
+                "support_outer_radius": float(support["outer_radius_px"]),
             }
 
         return best
@@ -1147,18 +1308,21 @@ class HSVCalibratorNode(Node):
         frame: np.ndarray,
         depth_mm: np.ndarray,
         profile: Dict[str, Any],
-    ) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    ) -> Tuple[np.ndarray, Dict[str, np.ndarray], Dict[str, Any]]:
         """Draw a local preview equivalent to IRC's RealSense ball path."""
         overlay = frame.copy()
-        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        empty_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+        ball_color_mask = empty_mask.copy()
+        depth_mask = empty_mask.copy()
+        mask = empty_mask.copy()
         h_low = int(profile["h_low"])
         h_high = int(profile["h_high"])
         compatible = h_low <= h_high
 
         detection: Optional[Dict[str, Any]] = None
         if compatible:
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(
+            ball_color_mask = cv2.inRange(
                 hsv,
                 np.array(
                     [h_low, int(profile["s_low"]), int(profile["v_low"])],
@@ -1169,19 +1333,50 @@ class HSVCalibratorNode(Node):
                     dtype=np.uint8,
                 ),
             )
-            invalid_depth = (
-                ~np.isfinite(depth_mm)
-                | (depth_mm <= 0.0)
-                | (depth_mm > BALL_PREVIEW_DEPTH_MAX_MM)
+            floor_profile = self.store.get("floor")
+            floor_mask = hsv_range_mask(
+                hsv,
+                (
+                    int(floor_profile["h_low"]),
+                    int(floor_profile["s_low"]),
+                    int(floor_profile["v_low"]),
+                ),
+                (
+                    int(floor_profile["h_high"]),
+                    int(floor_profile["s_high"]),
+                    int(floor_profile["v_high"]),
+                ),
             )
-            mask[invalid_depth] = 0
+            valid_depth = (
+                np.isfinite(depth_mm)
+                & (depth_mm > 0.0)
+                & (depth_mm <= BALL_PREVIEW_DEPTH_MAX_MM)
+            )
+            depth_mask[valid_depth] = 255
+            mask = cv2.bitwise_and(ball_color_mask, depth_mask)
             kernel = cv2.getStructuringElement(
                 cv2.MORPH_ELLIPSE,
                 (BALL_PREVIEW_MORPH_SIZE, BALL_PREVIEW_MORPH_SIZE),
             )
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-            detection = self._find_production_ball(mask, depth_mm)
+            detection = self._find_production_ball(
+                mask,
+                hsv,
+                ball_color_mask,
+                floor_mask,
+                depth_mm,
+            )
+
+        masked_color = cv2.bitwise_and(frame, frame, mask=mask)
+        outputs = {
+            "hsv": hsv,
+            "raw_color_mask": ball_color_mask,
+            "color_mask": mask,
+            "depth_mask": depth_mask,
+            "combined_mask": mask,
+            "masked_color": masked_color,
+        }
 
         held = False
         if detection is not None:
@@ -1216,17 +1411,48 @@ class HSVCalibratorNode(Node):
         if display is not None:
             center = (int(display["cx"]), int(display["cy"]))
             radius = max(1, int(round(float(display["radius"]))))
+            support_radius = max(
+                1,
+                int(round(float(display["support_outer_radius"]))),
+            )
             cv2.circle(overlay, center, radius, color, 3)
+            cv2.circle(
+                overlay,
+                center,
+                support_radius,
+                (255, 180, 0),
+                1,
+            )
             cv2.circle(overlay, center, 4, (0, 0, 255), -1)
             detail = (
                 f"{float(display['distance_cm']):.1f}cm  "
                 f"{float(display['angle_deg']):+.1f}deg  "
                 f"circ {float(display['circularity']):.2f}"
             )
+            support_detail = (
+                f"black {float(display['support_black_ratio']):.2f}  "
+                f"floor {float(display['support_floor_ratio']):.2f}  "
+                f"orange {float(display['support_ball_ratio']):.2f}  "
+                f"sectors {int(display['support_sectors'])}"
+            )
         else:
             detail = "No ball passes IRC depth/shape/physical-size checks"
+            if self.preview_last_rejection is not None:
+                rejection = self.preview_last_rejection
+                detail = f"REJECT: {rejection['reason']}"
+                support_detail = (
+                    f"black {float(rejection['black_ratio']):.2f}  "
+                    f"floor {float(rejection['floor_ratio']):.2f}  "
+                    f"orange "
+                    f"{float(rejection['surrounding_ball_ratio']):.2f}  "
+                    f"sectors {int(rejection['qualified_sectors'])}"
+                )
+            else:
+                support_detail = (
+                    "Every ball must pass black-support/floor checks"
+                )
 
-        cv2.rectangle(overlay, (5, 5), (430, 72), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (5, 5), (480, 92), (0, 0, 0), -1)
         cv2.putText(
             overlay,
             f"IRC BALL PREVIEW: {state}",
@@ -1249,14 +1475,24 @@ class HSVCalibratorNode(Node):
         )
         cv2.putText(
             overlay,
+            support_detail,
+            (12, 70),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.36,
+            (235, 235, 235),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            overlay,
             (
                 f"HSV H {profile['h_low']}..{profile['h_high']}  "
                 f"S {profile['s_low']}..{profile['s_high']}  "
                 f"V {profile['v_low']}..{profile['v_high']} | D return"
             ),
-            (12, 68),
+            (12, 87),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.36,
+            0.34,
             (235, 235, 235),
             1,
             cv2.LINE_AA,
@@ -1276,15 +1512,27 @@ class HSVCalibratorNode(Node):
         px = max(0, overlay.shape[1] - preview_w - 5)
         py = 5
         ph = min(preview_h, overlay.shape[0] - py)
-        overlay[py : py + ph, px : px + preview_w] = mask_preview[:ph]
+        overlay[py:py + ph, px:px + preview_w] = mask_preview[:ph]
 
         preview_metrics = {
             "preview_irc_compatible": compatible,
             "preview_detected": detection is not None,
             "preview_held": held,
             "preview_state": state,
+            "candidate_count": int(detection is not None),
+            "accepted_count": int(detection is not None),
+            "largest_area": (
+                float(detection["area"])
+                if detection is not None
+                else 0.0
+            ),
+            "best_circularity": (
+                float(detection["circularity"])
+                if detection is not None
+                else 0.0
+            ),
         }
-        return overlay, mask, preview_metrics
+        return overlay, outputs, preview_metrics
 
     def _draw_candidates(
         self,
@@ -1325,7 +1573,7 @@ class HSVCalibratorNode(Node):
             shifted[:, 0, 0] -= x
             shifted[:, 0, 1] -= y
             cv2.drawContours(local_mask, [shifted], -1, 255, thickness=-1)
-            local_depth = depth_mm[y : y + height, x : x + width]
+            local_depth = depth_mm[y:y + height, x:x + width]
             valid = (
                 (local_mask > 0)
                 & np.isfinite(local_depth)
@@ -1512,8 +1760,18 @@ class HSVCalibratorNode(Node):
         note_y = start_y + len(rows) * line_h + 10
         cv2.putText(
             panel,
-            "Workflow: ROI -> SPACE xN -> A fit -> D preview/return -> R restore or S save",
+            "Targets: B ball | K black support | F red floor | G hoop",
             (18, note_y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.43,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+        cv2.putText(
+            panel,
+            "Workflow: ROI -> SPACE xN -> A fit -> D preview -> R restore or S save",
+            (18, note_y + 22),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.43,
             (255, 255, 255),
@@ -1611,6 +1869,7 @@ class HSVCalibratorNode(Node):
                 f"dark {metrics['underexposed_pct']:.1f}%  "
                 f"clip {metrics['overexposed_pct']:.1f}%"
             ),
+            "B ball | K support | F floor | G hoop",
             "SPACE sample | A fit | D preview | R restore | S save",
         ]
         self._draw_text_panel(
@@ -1630,23 +1889,47 @@ class HSVCalibratorNode(Node):
             bank_stats = self.sample_bank_stats.get(key)
             if bank_stats:
                 add_count = self.sample_add_counts.get(key, 0)
-                hue_wrap = (
-                    " wrap"
-                    if bank_stats["h_fit_low"] > bank_stats["h_fit_high"]
-                    else ""
-                )
-                context_lines = [
-                    f"ROI BANK x{add_count} | {bank_stats['count']} px",
-                    (
-                        f"sample H {bank_stats['h_fit_low']}.."
-                        f"{bank_stats['h_fit_high']}{hue_wrap}  "
-                        f"S {bank_stats['s_p02']:.0f}..{bank_stats['s_p99']:.0f}  "
-                        f"V {bank_stats['v_p02']:.0f}..{bank_stats['v_p99']:.0f}"
-                    ),
-                    "Press A to calculate final HSV",
-                ]
+                if key == "support":
+                    context_lines = [
+                        f"BLACK SUPPORT BANK x{add_count} | "
+                        f"{bank_stats['count']} px",
+                        (
+                            f"V p02/p50/p99 "
+                            f"{bank_stats['v_p02']:.0f}/"
+                            f"{bank_stats['v_p50']:.0f}/"
+                            f"{bank_stats['v_p99']:.0f}"
+                        ),
+                        "Press A to fit the black V ceiling",
+                    ]
+                else:
+                    hue_wrap = (
+                        " wrap"
+                        if bank_stats["h_fit_low"] > bank_stats["h_fit_high"]
+                        else ""
+                    )
+                    context_lines = [
+                        f"ROI BANK x{add_count} | {bank_stats['count']} px",
+                        (
+                            f"sample H {bank_stats['h_fit_low']}.."
+                            f"{bank_stats['h_fit_high']}{hue_wrap}  "
+                            f"S {bank_stats['s_p02']:.0f}.."
+                            f"{bank_stats['s_p99']:.0f}  "
+                            f"V {bank_stats['v_p02']:.0f}.."
+                            f"{bank_stats['v_p99']:.0f}"
+                        ),
+                        "Press A to calculate final HSV",
+                    ]
         elif context_mode == "fit":
             fitted = self.last_fitted_profiles.get(key)
+            if fitted:
+                if key == "support":
+                    context_lines = [
+                        f"AUTO-FIT RESULT | SUPPORT V <= {fitted['v_high']}",
+                        "H/S ignored for black; V ceiling is exported",
+                        "Switch B, then D to validate ball + support",
+                    ]
+                    context_color = (0, 220, 255)
+                    fitted = None
             if fitted:
                 hsv_keys = (
                     "h_low", "h_high", "s_low", "s_high", "v_low", "v_high"
@@ -1718,8 +2001,11 @@ class HSVCalibratorNode(Node):
             self.get_logger().error(f"Could not save profiles: {exc}")
 
     def _save_ball_ros_params(self) -> None:
-        """Export the latest ball HSV in ROS 2 --params-file format."""
+        """Export ball, black-support and floor calibration for production."""
         profile = self.store.get("ball")
+        support_profile = self.store.get("support")
+        floor_profile = self.store.get("floor")
+        detector = self.store.get_detector()
         hsv_keys = (
             "h_low",
             "h_high",
@@ -1728,7 +2014,46 @@ class HSVCalibratorNode(Node):
             "v_low",
             "v_high",
         )
-        values = {name: int(profile[name]) for name in hsv_keys}
+        values: Dict[str, Any] = {
+            name: int(profile[name]) for name in hsv_keys
+        }
+        values["support_v_max"] = int(support_profile["v_high"])
+        for name in hsv_keys:
+            values[f"floor_{name}"] = int(floor_profile[name])
+        values.update(
+            {
+                "support_diameter_m": float(
+                    detector["support_diameter_m"]
+                ),
+                "support_black_ratio_min": float(
+                    detector["support_black_ratio_min"]
+                ),
+                "edge_support_black_ratio_min": float(
+                    detector["edge_support_black_ratio_min"]
+                ),
+                "support_ball_color_ratio_max": float(
+                    detector["support_ball_color_ratio_max"]
+                ),
+                "support_floor_ratio_max": float(
+                    detector["support_floor_ratio_max"]
+                ),
+                "support_sector_black_ratio_min": float(
+                    detector["support_sector_black_ratio_min"]
+                ),
+                "support_min_sectors": int(
+                    detector["support_min_sectors"]
+                ),
+                "edge_support_min_sectors": int(
+                    detector["edge_support_min_sectors"]
+                ),
+                "support_min_visible_fraction": float(
+                    detector["support_min_visible_fraction"]
+                ),
+                "edge_support_min_visible_fraction": float(
+                    detector["edge_support_min_visible_fraction"]
+                ),
+            }
+        )
 
         # The competition detector currently uses one cv2.inRange call and
         # therefore cannot consume a circular hue interval such as 170..10.
@@ -1760,7 +2085,7 @@ class HSVCalibratorNode(Node):
             )
         temp_path.replace(self.ball_params_path)
         self.get_logger().info(
-            "Exported latest ball HSV for robot_bringup -> "
+            "Exported ball/support/floor detector calibration -> "
             f"{self.ball_params_path}"
         )
 
@@ -1892,37 +2217,34 @@ class HSVCalibratorNode(Node):
         self.last_frame_time = now
 
         profile = self._read_controls()
-        outputs = self._process_masks(frame, depth_mm, profile)
-        calibration_overlay, candidate_metrics = self._draw_candidates(
-            frame,
-            outputs["combined_mask"],
-            depth_mm,
-            profile,
-        )
-        frame_metrics = self._frame_metrics(outputs["hsv"])
-        metrics = {**frame_metrics, **candidate_metrics}
-
         if self.view_mode == "detection" and self.target == "ball":
-            overlay, _preview_mask, preview_metrics = (
+            overlay, outputs, preview_metrics = (
                 self._draw_ball_detection_preview(frame, depth_mm, profile)
             )
-            metrics.update(preview_metrics)
-        elif self.view_mode == "detection":
-            overlay, preview_candidate_metrics = self._draw_candidates(
+            metrics = {
+                **self._frame_metrics(outputs["hsv"]),
+                **preview_metrics,
+            }
+        else:
+            outputs = self._process_masks(frame, depth_mm, profile)
+            draw_preview = self.view_mode == "detection"
+            overlay, candidate_metrics = self._draw_candidates(
                 frame,
                 outputs["combined_mask"],
                 depth_mm,
                 profile,
-                draw_preview=True,
+                draw_preview=draw_preview,
             )
-            metrics.update(preview_candidate_metrics)
-            metrics["preview_state"] = (
-                "DETECTED"
-                if preview_candidate_metrics["accepted_count"] > 0
-                else "MISS"
-            )
-        else:
-            overlay = calibration_overlay
+            metrics = {
+                **self._frame_metrics(outputs["hsv"]),
+                **candidate_metrics,
+            }
+            if draw_preview:
+                metrics["preview_state"] = (
+                    "DETECTED"
+                    if candidate_metrics["accepted_count"] > 0
+                    else "MISS"
+                )
 
         self.latest_frame = frame.copy()
         self.latest_hsv = outputs["hsv"].copy()
@@ -1950,6 +2272,10 @@ class HSVCalibratorNode(Node):
                 rclpy.shutdown()
         elif key == ord("b"):
             self._switch_target("ball")
+        elif key == ord("k"):
+            self._switch_target("support")
+        elif key == ord("f"):
+            self._switch_target("floor")
         elif key == ord("g"):
             self._switch_target("hoop")
         elif key == ord("h"):
