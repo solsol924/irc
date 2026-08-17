@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Shared color-context checks for the IRC RealSense ball detector.
+IRC RealSense 공 검출기에서 공통으로 사용하는 색상 문맥 검사 모듈입니다.
 
-The competition ball is always placed on a black circular support.  This
-module keeps the support/floor validation identical in the production node
-and in the calibration tool's detection preview.
+대회용 공은 항상 검은색 원형 받침대 위에 놓입니다. 이 모듈은 실제 운용
+노드와 보정 도구의 검출 미리보기에서 받침대 및 바닥을 동일한 방식으로
+검증하도록 합니다.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import numpy as np
 
 @dataclass(frozen=True)
 class BallSupportConfig:
-    """Physical and color-context thresholds for the black ball support."""
+    """검은색 공 받침대의 물리적 특성과 색상 문맥에 대한 임곗값입니다."""
 
     support_diameter_m: float = 0.150
     support_v_max: int = 75
@@ -37,7 +37,7 @@ class BallSupportConfig:
     outer_radius_scale: float = 0.95
 
     def validated(self) -> "BallSupportConfig":
-        """Return a bounded copy safe for mask construction."""
+        """마스크 생성에 안전하도록 값의 범위를 제한한 복사본을 반환합니다."""
         return BallSupportConfig(
             support_diameter_m=max(0.001, float(self.support_diameter_m)),
             support_v_max=max(0, min(255, int(self.support_v_max))),
@@ -71,7 +71,7 @@ def hsv_range_mask(
     lower: Tuple[int, int, int],
     upper: Tuple[int, int, int],
 ) -> np.ndarray:
-    """Create an HSV mask and support an H interval that wraps through zero."""
+    """HSV 마스크를 생성하며, 0을 경계로 이어지는 H 범위도 지원합니다."""
     h_low, s_low, v_low = (int(value) for value in lower)
     h_high, s_high, v_high = (int(value) for value in upper)
     h_low = max(0, min(179, h_low))
@@ -106,7 +106,7 @@ def hsv_range_mask(
 
 
 def black_support_mask(hsv: np.ndarray, support_v_max: int) -> np.ndarray:
-    """Classify black support pixels by brightness despite unstable hue."""
+    """불안정한 색조의 영향을 피하도록 밝기를 기준으로 검은 받침대 픽셀을 분류합니다."""
     limit = max(0, min(255, int(support_v_max)))
     return cv2.inRange(
         hsv,
@@ -130,10 +130,10 @@ def evaluate_ball_support(
     black_mask: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
     """
-    Validate that a ball candidate is surrounded by its black support.
+    공 후보가 검은색 받침대로 둘러싸여 있는지 검증합니다.
 
-    Only pixels inside the image are counted.  This is important at the frame
-    boundary: pixels outside the image must never be interpreted as black.
+    이미지 내부의 픽셀만 계산합니다. 프레임 경계에서는 이미지 밖의 픽셀이
+    검은색으로 해석되지 않아야 하므로 특히 중요합니다.
     """
     cfg = config.validated()
     height, width = hsv.shape[:2]
@@ -173,9 +173,9 @@ def evaluate_ball_support(
     ):
         return _empty_support_result("invalid_ring")
 
-    # The support test only needs a disc around this candidate.  Keeping all
-    # subsequent arrays inside that bounding box avoids re-scanning the full
-    # camera frame once for every orange contour.
+    # 받침대 검사에는 이 후보 주변의 원형 영역만 필요합니다. 이후 사용하는 모든
+    # 배열을 이 경계 상자 안으로 제한하면 주황색 윤곽선마다 전체 카메라 프레임을
+    # 다시 탐색하지 않아도 됩니다.
     x_start = max(
         0,
         min(width, int(math.floor(cx - outer_radius))),
@@ -233,9 +233,9 @@ def evaluate_ball_support(
         black = black_support_mask(local_hsv, cfg.support_v_max) > 0
     else:
         black = black_mask[y_start:y_end, x_start:x_end] > 0
-    # Profiles can overlap at dark pixels because hue is unstable near black.
-    # Once a pixel satisfies the calibrated black ceiling, do not count it as
-    # red floor or orange leakage as well.
+    # 검은색에 가까울수록 색조가 불안정하므로 어두운 픽셀에서는 색상 프로파일이
+    # 겹칠 수 있습니다. 픽셀이 보정된 검은색 상한을 충족하면 빨간색 바닥이나
+    # 주황색 번짐으로 중복 계산하지 않습니다.
     ball_like = (local_ball_mask > 0) & ~black
     floor_like = (local_floor_mask > 0) & ~black
     black_ratio = float(np.count_nonzero(black & ring) / visible_pixels)
@@ -244,8 +244,8 @@ def evaluate_ball_support(
     )
     floor_ratio = float(np.count_nonzero(floor_like & ring) / visible_pixels)
 
-    # A single shadow or a dark frame corner must not satisfy the support
-    # condition.  Demand black evidence in several angular sectors.
+    # 하나의 그림자나 어두운 프레임 모서리만으로 받침대 조건을 충족해서는 안 됩니다.
+    # 따라서 여러 각도 구역에서 검은색 근거가 확인되어야 합니다.
     angles = np.arctan2(dy, dx)
     sector_width = 2.0 * math.pi / cfg.sector_count
     sector_ids = np.floor((angles + math.pi) / sector_width).astype(np.int16)
@@ -255,7 +255,7 @@ def evaluate_ball_support(
     for sector in range(cfg.sector_count):
         sector_region = ring & (sector_ids == sector)
         sector_pixels = int(np.count_nonzero(sector_region))
-        # Very small clipped slivers are not independent support evidence.
+        # 잘려서 매우 작아진 조각은 독립적인 받침대 근거로 보지 않습니다.
         if sector_pixels < 8:
             sector_ratios.append(0.0)
             continue

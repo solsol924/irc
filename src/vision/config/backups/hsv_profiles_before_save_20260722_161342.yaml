@@ -1,0 +1,31 @@
+version: 2
+profiles:
+  ball:
+    h_low: 2
+    h_high: 15
+    s_low: 135
+    s_high: 255
+    v_low: 32
+    v_high: 255
+    depth_min_mm: 100
+    depth_max_mm: 6000
+    blur_size: 3
+    morph_size: 5
+    min_area: 120
+    ball_circularity_min: 0.33
+  hoop:
+    h_low: 8
+    h_high: 60
+    s_low: 60
+    s_high: 255
+    v_low: 20
+    v_high: 255
+    depth_min_mm: 100
+    depth_max_mm: 6000
+    blur_size: 3
+    morph_size: 5
+    min_area: 250
+    ball_circularity_min: 0.45
+metadata:
+  note: Latest venue calibration. Updated by realsense_hsv_calibrator.py.
+  last_saved_unix: 1784686581.3411493

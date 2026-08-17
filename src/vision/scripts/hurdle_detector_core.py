@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-Pure OpenCV hurdle detector for aligned RealSense color/depth frames.
+정렬된 RealSense 컬러/깊이 프레임을 위한 순수 OpenCV 허들 검출기입니다.
 
-The implementation combines two reference approaches:
-- senior hurdle code: Lab color filtering, horizontal morphology, elongated
-  contour filtering, cv2.fitLine angle, and short lost-frame holding;
-- expo code: yellow HSV+BGR filtering, empty-floor depth calibration,
-  height-above-floor verification, height smoothing, and CROSSING by image y.
+이 구현은 다음 두 가지 참고 방식을 결합합니다.
+- 기존 허들 코드: Lab 색상 필터링, 수평 형태학 연산, 길쭉한 윤곽선 필터링,
+  cv2.fitLine 각도 및 짧은 검출 유실 프레임 유지
+- expo 코드: 노란색 HSV+BGR 필터링, 빈 바닥 깊이 보정, 바닥 기준 높이 검증,
+  높이 평활화 및 이미지 y 좌표를 이용한 CROSSING 판정
 
-There is deliberately no ROS dependency in this file.  The ROS2 wrapper is
-hurdle_vision_fusion.py.
+이 파일은 의도적으로 ROS에 의존하지 않습니다. ROS2 래퍼는
+hurdle_vision_fusion.py입니다.
 """
 
 from __future__ import annotations
@@ -33,19 +33,19 @@ class HurdleVisionState:
 
 @dataclass
 class HurdleDetectorConfig:
-    # ROI ratios in the full RealSense color/depth image.
+    # 전체 RealSense 컬러/깊이 이미지에서 ROI가 차지하는 비율입니다.
     roi_left_ratio: float = 0.0
     roi_right_ratio: float = 1.0
     roi_top_ratio: float = 0.0
     roi_bottom_ratio: float = 1.0
 
-    # Color mask selection: hsv, lab, and, or.
-    # "or" gives good recall; depth and shape filters reject most false hits.
+    # 색상 마스크 선택 방식: hsv, lab, and, or.
+    # "or"는 재현율이 높으며, 깊이 및 형태 필터가 대부분의 오검출을 제거합니다.
     color_combine_mode: str = "or"
     use_hsv_mask: bool = True
     use_lab_mask: bool = True
 
-    # expo.py yellow HSV initial values.
+    # expo.py에서 사용한 노란색 HSV 초깃값입니다.
     h_low: int = 20
     h_high: int = 38
     s_low: int = 120
@@ -53,7 +53,7 @@ class HurdleDetectorConfig:
     v_low: int = 80
     v_high: int = 255
 
-    # expo.py BGR guard against brown floor and white robot parts.
+    # 갈색 바닥과 흰색 로봇 부품을 제외하기 위한 expo.py의 BGR 보호 조건입니다.
     use_bgr_guard: bool = True
     bgr_min_r: int = 120
     bgr_min_g: int = 120
@@ -61,7 +61,7 @@ class HurdleDetectorConfig:
     bgr_min_g_minus_b: int = 70
     bgr_max_abs_r_minus_g: int = 60
 
-    # Senior code Lab initial values.
+    # 기존 코드에서 사용한 Lab 초깃값입니다.
     l_low: int = 40
     l_high: int = 255
     a_low: int = 90
@@ -69,7 +69,7 @@ class HurdleDetectorConfig:
     b_low: int = 140
     b_high: int = 255
 
-    # Depth and empty-floor calibration.
+    # 깊이 및 빈 바닥 보정 설정입니다.
     depth_min_m: float = 0.05
     depth_max_m: float = 1.50
     floor_calibration_frames: int = 45
@@ -78,18 +78,18 @@ class HurdleDetectorConfig:
     compensate_floor_offset: bool = True
     max_floor_offset_m: float = 0.08
 
-    # Height estimate: floor_delta, absolute, hybrid.
-    # floor_delta is recommended when the robot body can pitch slightly.
+    # 높이 추정 방식: floor_delta, absolute, hybrid.
+    # 로봇 몸체가 약간 피칭할 수 있는 경우에는 floor_delta를 권장합니다.
     height_mode: str = "floor_delta"
     camera_height_m: float = 0.430
     hybrid_floor_weight: float = 0.75
     height_min_m: float = 0.010
     height_max_m: float = 0.150
-    # expo.py used +1.8 cm.  Measure the real error and retune this value.
+    # expo.py에서는 +1.8cm를 사용했습니다. 실제 오차를 측정해 이 값을 다시 조정합니다.
     height_offset_m: float = 0.018
     height_top_fraction: float = 0.20
 
-    # Morphology and horizontal-bar shape filtering.
+    # 형태학 연산 및 수평 막대 형태 필터링 설정입니다.
     morph_kernel_size: int = 5
     horizontal_close_width: int = 21
     horizontal_close_height: int = 3
@@ -100,18 +100,18 @@ class HurdleDetectorConfig:
     min_depth_support_ratio: float = 0.15
     max_horizontal_angle_deg: float = 40.0
 
-    # Temporal smoothing.  Senior code held the previous result for 3 frames;
-    # expo.py used a 12-frame height history.
+    # 시간축 평활화 설정입니다. 기존 코드는 이전 결과를 3프레임 동안 유지했고,
+    # expo.py는 12프레임의 높이 기록을 사용했습니다.
     detection_confirm_frames: int = 3
     lost_hold_frames: int = 3
     history_size: int = 12
 
-    # CROSSING threshold inside the ROI.
+    # ROI 내부에서 CROSSING 상태를 판정하는 임곗값입니다.
     cross_y_ratio: float = 0.55
     cross_hysteresis: float = 0.03
 
-    # Disabled for competition use.  When true, a valid color/shape contour can
-    # be accepted even when the depth verification has holes.
+    # 대회에서는 비활성화합니다. 활성화하면 깊이 검증에 빈 영역이 있더라도 색상과
+    # 형태가 유효한 윤곽선을 허용할 수 있습니다.
     allow_color_only_fallback: bool = False
 
     def validated(self) -> "HurdleDetectorConfig":
@@ -309,8 +309,8 @@ class HurdleOpenCVDetector:
         else:
             combined = cv2.bitwise_or(hsv_mask, lab_mask)
 
-        # Strict mask is used only to prevent calibrating while a clear yellow
-        # hurdle occupies the ROI.  It is intentionally stricter than OR mode.
+        # 명확한 노란색 허들이 ROI를 차지한 상태에서 보정되는 것을 막기 위해서만
+        # 엄격한 마스크를 사용합니다. 의도적으로 OR 모드보다 엄격하게 설정합니다.
         if self.cfg.use_hsv_mask and self.cfg.use_lab_mask:
             strict = cv2.bitwise_and(hsv_mask, lab_mask)
         elif self.cfg.use_hsv_mask:
@@ -526,7 +526,7 @@ class HurdleOpenCVDetector:
                 cx_roi = float(bx + bw / 2.0)
                 cy_roi = float(by + bh / 2.0)
 
-            # Line endpoints across the ROI for debug visualization.
+            # 디버그 시각화를 위해 ROI를 가로지르는 선의 양 끝점을 계산합니다.
             eps = 1e-9
             left_y = line_y + (0.0 - line_x) * vy / (vx + eps)
             right_y = line_y + ((roi_w - 1.0) - line_x) * vy / (vx + eps)
@@ -969,7 +969,7 @@ class HurdleOpenCVDetector:
                 cv2.LINE_AA,
             )
 
-        # Preview legend: green=HSV, blue=Lab, cyan=combined, magenta=depth verified.
+        # 미리보기 범례: 녹색=HSV, 파란색=Lab, 청록색=결합, 자홍색=깊이 검증 완료.
         preview = np.zeros((*color_mask.shape, 3), dtype=np.uint8)
         preview[hsv_mask > 0] = (0, 160, 0)
         preview[lab_mask > 0] = (160, 0, 0)
