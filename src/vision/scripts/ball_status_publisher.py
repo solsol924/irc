@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import math
 from typing import Optional, Tuple
 
 from rclpy.node import Node
@@ -20,12 +19,13 @@ class BallStatus:
     Left_Move = 10
     Right_Move = 11
     Pick_Ready = 12
-    Recatch = 13
-    Shoot = 14
+    Shoot = 13
     Left_Half_Forward_3step = 21
     Right_Half_Forward_3step = 22
-    Left_Turn_Ball = 23
-    Right_Turn_Ball = 24
+    Left_Turn_10 = 23
+    Right_Turn_10 = 24
+    Left_Turn_5 = 28
+    Right_Turn_5 = 29
     Ball_In_Hand = 50
     Ball_Lost = 45
     Ball_None = 99
@@ -38,8 +38,10 @@ class BallFeatures:
     realsense_ball_angle_error: Optional[float] = None
 
     webcam_ball_detected: bool = False
-    #로봇 중심선에서 떨어진 정도
+    # x 오프셋과 x 거리는 모두 왼쪽 음수, 오른쪽 양수인 signed 값이다.
+    webcam_ball_x_offset: Optional[float] = None
     webcam_ball_x_distance: Optional[float] = None
+    webcam_ball_y_distance: Optional[float] = None
     webcam_ball_angle_error: Optional[float] = None
     webcam_ball_distance_px: Optional[float] = None
 
@@ -51,24 +53,14 @@ class BallDecision:
         #100cm 이하이면 공 모드, 25cm 이하에서는 webcam에서 보이는 거리(임의)
         self.ball_entry_distance_cm = 100.0
 
-        # 직진, 제자리회전 기준각 5도
+        # Realsense 직진, 제자리회전 기준각 5도
         self.angle_center_tol = 5.0
 
-        # 웹캠의 x좌표 거리 기준
-        ### 25px 이내면 중앙
-        ### 60px 이내면 약한 방향 보정
-        ### 가까운 상태에서 60px 초과면 좌우 이동
-        self.x_center_tol_px = 25.0
-        self.x_half_forward_tol_px = 60.0
-        self.x_move_tol_px = 60.0
-
-        #pick_ready 기준
-        ### 공 중심까지 거리가 80px, 오차범위 ± 20px이내, 3프레임 연속 들어오면
-        # 공 중심과 로봇 중심의 y축 거리가 260px 이하면 미세 접근 시작
-        self.fine_adjust_start_distance_px = 260.0
-        self.pick_distance_px = 80.0
-        self.pick_distance_tol_px = 20.0
-
+        # Webcam 접근 및 pick 기준
+        self.webcam_angle_center_tol = 4.0
+        self.webcam_pick_y_max_px = 78.0
+        self.webcam_pick_x_min_px = -40.0
+        self.webcam_pick_x_max_px = 35.0
 
     def decide(self, features: BallFeatures) -> Tuple[int, float]:
         #공을 잡고 있으면 접근 명령을 보내지 않음
@@ -78,8 +70,8 @@ class BallDecision:
         if not self.Ball_mission_ready(features):
             return BallStatus.Ball_None, 0.0
 
-        #webcam에서 공이 감지되면 webcam 기준으로 판단
-        if features.webcam_ball_detected and features.webcam_ball_x_distance is not None:
+        # webcam에서 공이 감지되면 webcam 기준으로 판단한다.
+        if features.webcam_ball_detected:
             return self._decide_from_webcam(features)
 
         #realsense에서 공이 감지되면 realsense 기준으로 판단
@@ -109,99 +101,34 @@ class BallDecision:
 
     #Webcam 판단
     def _decide_from_webcam(self, features: BallFeatures) -> Tuple[int, float]:
-        #webcam에서 감지된 공의 x좌표 거리, 각도, 픽셀 거리
-        webcam_ball_x_distance = features.webcam_ball_x_distance
-        angle = self.webcam_angle(features.webcam_ball_angle_error)
-        webcam_ball_distance = features.webcam_ball_distance_px
-
-        # 전체 픽셀 거리에서 x축 성분을 제외해 y축 거리의 절댓값을 구한다.
-        if webcam_ball_distance is not None:
-            webcam_ball_distance = math.sqrt(max(
-                0.0,
-                webcam_ball_distance ** 2 - webcam_ball_x_distance ** 2,
-            ))
-
-        #아직 멀리 있으면 방향보정하며 공에 접근
-        if not self.Close_to_ball(webcam_ball_distance):
-            return self.Move_to_Ball(webcam_ball_x_distance, angle)
-
-        #공이 가까이 있으면 좌우 이동하며 중심 맞추기
-        if abs(webcam_ball_x_distance) > self.x_move_tol_px:
-            if webcam_ball_x_distance < 0:
-                return BallStatus.Left_Move, angle
-            return BallStatus.Right_Move, angle
-
-        #층분히 가까우면서 x 좌표도 중앙에 있으면 pick 판단하기
-        return self.PickReady(
-            webcam_ball_distance,
-            webcam_ball_x_distance,
-            angle,
-        )
-
-    #공이 가까이 있는지 판단
-    def Close_to_ball(
-        self,
-        webcam_ball_distance_px: Optional[float],
-    ) -> bool:
-
-        # 공 중심과 로봇 중심의 y축 픽셀 거리 기준
-        if webcam_ball_distance_px is None:
-            return False
-
-        return webcam_ball_distance_px <= self.fine_adjust_start_distance_px
-
-    #Pick ready 판단
-    def PickReady(
-        self,
-        webcam_ball_distance_px: Optional[float],
-        webcam_ball_x_distance: float,
-        angle: float,
-    ) -> Tuple[int, float]:
-
-        #공이 중앙보다 20px이상 벗어나있으면 좌우 이동해서 정렬
-        if abs(webcam_ball_x_distance) > self.x_center_tol_px:
-            if webcam_ball_x_distance < 0:
-                return BallStatus.Left_Move, angle
-            return BallStatus.Right_Move, angle
-
-        #거리값이 없으면 판단불가
-        if webcam_ball_distance_px is None:
+        # x_offset은 좌우 방향을 포함한 signed 거리이다.
+        webcam_ball_x_offset = features.webcam_ball_x_offset
+        if webcam_ball_x_offset is None:
+            # 구 호출부에서는 x_distance가 signed 오프셋이었다.
+            webcam_ball_x_offset = features.webcam_ball_x_distance
+        webcam_ball_y_distance = features.webcam_ball_y_distance
+        if (
+            webcam_ball_x_offset is None
+            or webcam_ball_y_distance is None
+        ):
             return BallStatus.Ball_None, 0.0
 
-        #목표 거리와의 오차를 계산, 허용가능 오차범위(20px)안에 들어오면 Pick_Ready
-        distance_error = webcam_ball_distance_px - self.pick_distance_px
-        if abs(distance_error) <= self.pick_distance_tol_px:
-            return BallStatus.Pick_Ready, 0.0
+        angle = self.webcam_angle(features.webcam_ball_angle_error)
 
-        #거리오차가 양수이면 미세전진, 음수이면 미세후진
-        if distance_error > 0:
+        # y 거리를 먼저 판단한다. 입력 y 거리는 항상 양수로 들어온다.
+        if webcam_ball_y_distance > self.webcam_pick_y_max_px:
+            if angle < -self.webcam_angle_center_tol:
+                return BallStatus.Left_Turn_5, angle
+            if angle > self.webcam_angle_center_tol:
+                return BallStatus.Right_Turn_5, angle
             return BallStatus.Forward_half, 0.0
 
-        return BallStatus.Backward_half, 0.0
-
-    #아직 공과 멀리 있을 때 접근
-    def Move_to_Ball(
-        self,
-        webcam_ball_x_distance: float,
-        angle: float,
-    ) -> Tuple[int, float]:
-        abs_x_distance = abs(webcam_ball_x_distance)
-
-        #거의 정면일때는 직진
-        if abs_x_distance <= self.x_center_tol_px:
-            return BallStatus.Forward_3step, 0.0
-
-        #20~60px 오차에는 약한 방향보정하며 접근
-        if abs_x_distance <= self.x_half_forward_tol_px:
-            if webcam_ball_x_distance < 0:
-                return BallStatus.Left_Half_Forward_3step, angle
-            return BallStatus.Right_Half_Forward_3step, angle
-
-        #60px 이상 오차에는 좌/우 회전하며 접근
-        if webcam_ball_x_distance < 0:
-            return BallStatus.Left_Forward, angle
-
-        return BallStatus.Right_Forward, angle
+        # pick 거리 안에서는 signed x 거리로 좌우 정렬 여부를 판단한다.
+        if webcam_ball_x_offset < self.webcam_pick_x_min_px:
+            return BallStatus.Left_Move, angle
+        if webcam_ball_x_offset > self.webcam_pick_x_max_px:
+            return BallStatus.Right_Move, angle
+        return BallStatus.Pick_Ready, 0.0
 
     #realsense 기준으로 판단하는 각도
     def _status_from_angle(self, angle: Optional[float]) -> Tuple[int, float]:
@@ -215,8 +142,8 @@ class BallDecision:
         #5도 이상은 제자리회전
         if abs(angle) > self.angle_center_tol:
             if angle < 0:
-                return BallStatus.Left_Turn_Ball, angle
-            return BallStatus.Right_Turn_Ball, angle
+                return BallStatus.Left_Turn_10, angle
+            return BallStatus.Right_Turn_10, angle
 
     #webcam 각도 값이 없을 때 안전하게 처리, 값 있으면 그대로 반환
     def webcam_angle(self, angle: Optional[float]) -> float:
@@ -237,7 +164,9 @@ class BallStatusPublisher:
         realsense_ball_distance_cm: Optional[float] = None,
         realsense_ball_angle_error: Optional[float] = None,
         webcam_ball_detected: bool = False,
+        webcam_ball_x_offset: Optional[float] = None,
         webcam_ball_x_distance: Optional[float] = None,
+        webcam_ball_y_distance: Optional[float] = None,
         webcam_ball_angle_error: Optional[float] = None,
         webcam_ball_distance_px: Optional[float] = None,
         ball_in_hand: bool = False,
@@ -247,7 +176,9 @@ class BallStatusPublisher:
             realsense_ball_distance_cm=realsense_ball_distance_cm,
             realsense_ball_angle_error=realsense_ball_angle_error,
             webcam_ball_detected=webcam_ball_detected,
+            webcam_ball_x_offset=webcam_ball_x_offset,
             webcam_ball_x_distance=webcam_ball_x_distance,
+            webcam_ball_y_distance=webcam_ball_y_distance,
             webcam_ball_angle_error=webcam_ball_angle_error,
             webcam_ball_distance_px=webcam_ball_distance_px,
             ball_in_hand=ball_in_hand,
@@ -260,6 +191,17 @@ class BallStatusPublisher:
         msg.angle = float(angle)
         if hasattr(msg, 'ball_in_hand'):
             msg.ball_in_hand = bool(ball_in_hand)
+        measured_angle = (
+            webcam_ball_angle_error
+            if webcam_ball_angle_error is not None
+            else realsense_ball_angle_error
+        )
+        if hasattr(msg, 'detected_angle'):
+            msg.detected_angle = float(measured_angle or 0.0)
+        if hasattr(msg, 'x_distance_px'):
+            msg.x_distance_px = float(webcam_ball_x_distance or 0.0)
+        if hasattr(msg, 'y_distance_px'):
+            msg.y_distance_px = float(webcam_ball_y_distance or 0.0)
 
         self.ball_pub.publish(msg)
 

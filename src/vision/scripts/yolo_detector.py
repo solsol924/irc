@@ -14,6 +14,7 @@ publish 값:
 - line_distance
 - target_x, target_y
 - follow_distance
+- line_second_point_distance_px, hurdle_line_angle_deg
 - ball / hurdle detection 정보
 
 공/허들 fusion 관련 주의:
@@ -83,6 +84,97 @@ class ObjectDetection:
     @property
     def area(self) -> float:
         return max(0.0, self.w) * max(0.0, self.h)
+
+
+# 실제 motion 노드가 실행하는 모션 ID/이름입니다.
+MOTION_NAME = {
+    0: "Initial_Pose",
+    1: "Forward_4step",
+    2: "Left_Half_Forward",
+    3: "Right_Half_Forward",
+    4: "Left_Forward",
+    5: "Right_Forward",
+    6: "Left_Turn",
+    7: "Right_Turn",
+    8: "Forward_half",
+    9: "Backward_half",
+    10: "Left_Move",
+    11: "Right_Move",
+    12: "Pick",
+    13: "Shoot",
+    14: "Neck_Up",
+    15: "Neck_Left",
+    16: "Neck_Right",
+    17: "Neck_Center",
+    18: "Neck_Down",
+    19: "Hurdle_Go",
+    20: "Forward_3step",
+    21: "Left_Half_Forward_3step",
+    22: "Right_Half_Forward_3step",
+    23: "Left_Turn_Mission",
+    24: "Right_Turn_Mission",
+    25: "Hurdle_1step",
+    26: "Hurdle_Forward_20",
+    27: "Back_To_Initial",
+}
+
+
+@dataclass
+class MotionDisplayState:
+    """Track commands that the motion node has actually started."""
+
+    received_command: Optional[int] = None
+    active_command: Optional[int] = None
+    last_started_command: Optional[int] = None
+    running: bool = False
+    ready: bool = False
+
+    def on_command(self, command: int) -> None:
+        self.received_command = int(command)
+
+        # motion_end=false가 서로 다른 topic에서 먼저 도착한 경우에만
+        # 뒤늦게 도착한 command를 현재 실행 모션에 연결합니다.
+        if self.running and self.active_command is None:
+            self.active_command = self.received_command
+            self.last_started_command = self.received_command
+
+    def on_motion_state(self, motion_end: bool, motion_ready: bool) -> None:
+        self.ready = bool(motion_ready)
+
+        if not bool(motion_end):
+            self.running = True
+            self.active_command = self.received_command
+            if self.active_command is not None:
+                self.last_started_command = self.active_command
+            return
+
+        self.running = False
+        self.active_command = None
+
+
+def motion_overlay_lines(state: Optional[MotionDisplayState]) -> list[str]:
+    """Return the actual-motion lines rendered on the webcam image."""
+    if state is None:
+        return ["motion:-- N/A", "run:N/A"]
+
+    command = (
+        state.active_command
+        if state.running
+        else state.last_started_command
+    )
+    run_text = "RUNNING" if state.running else "IDLE"
+
+    if command is None:
+        return [
+            "motion:-- UNKNOWN",
+            f"run:{run_text} ready:{int(state.ready)}",
+        ]
+
+    name = MOTION_NAME.get(command, "Unknown")
+    return [
+        f"motion:{command} {name}",
+        f"run:{run_text} ready:{int(state.ready)}",
+    ]
 
 
 # ═══════════════════════════════════════════════════════
@@ -186,6 +278,8 @@ class LinePayloadSmoother:
             "target_y",
             "follow_angle",
             "follow_distance",
+            "line_second_point_distance_px",
+            "hurdle_line_angle_deg",
         ]:
             med = self._median([p.get(key) for p in valid])
             if med is not None:
@@ -211,6 +305,7 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "cam_height": 480,
         "cam_fps": 30,
         "flip_vertical": False,
+        "robot_center_offset_x_px": 25.0,
 
         # ROI: YOLO line 중심점 중 이 영역 안에 있는 것만 주행용으로 사용
         "roi_top_ratio": 0.00,
@@ -269,6 +364,11 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "cam_height": gi("camera", "height", defaults["cam_height"]),
         "cam_fps": gi("camera", "fps", defaults["cam_fps"]),
         "flip_vertical": gb("camera", "flip_vertical", defaults["flip_vertical"]),
+        "robot_center_offset_x_px": gf(
+            "camera",
+            "robot_center_offset_x_px",
+            defaults["robot_center_offset_x_px"],
+        ),
 
         "roi_top_ratio": gf("detection", "roi_top_ratio", defaults["roi_top_ratio"]),
         "roi_bottom_ratio": gf("detection", "roi_bottom_ratio", defaults["roi_bottom_ratio"]),
@@ -425,6 +525,8 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
         "target_y": -1.0,
         "follow_angle": 0.0,
         "follow_distance": -1.0,
+        "line_second_point_distance_px": None,
+        "hurdle_line_angle_deg": None,
     }
 
     if point_count == 0:
@@ -445,10 +547,31 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
 
     payload["target_x"] = float(target_x)
     payload["target_y"] = float(target_y)
-    payload["follow_distance"] = float(math.hypot(target_x - robot_x, target_y - robot_y))
+    target_dx = target_x - robot_x
+    target_angle = float(
+        math.degrees(math.atan2(target_dx, robot_y - target_y))
+    )
+
+    payload["follow_distance"] = float(
+        math.hypot(target_dx, target_y - robot_y)
+    )
     # 점 1개: 로봇 중심선과 '로봇 중심 -> 검출점' 선 사이의 부호 있는 각도.
     # 화면 위쪽을 0도로 보고, 검출점이 오른쪽이면 +, 왼쪽이면 -이다.
-    payload["follow_angle"] = float(math.degrees(math.atan2(target_x - robot_x, robot_y - target_y)))
+    payload["follow_angle"] = target_angle
+
+    # 허들 거리 판단은 로봇에서 두 번째로 가까운 라인점을 기준으로 한다.
+    # 기존 line_distance는 첫 번째 점 기준이므로 두 번째 점 거리를 별도로 보존한다.
+    if point_count >= 2:
+        payload["line_second_point_distance_px"] = float(target_dx)
+
+        # 허들 각도는 로봇에서 라인점을 바라보는 각도가 아니라,
+        # 검출된 라인점들을 직선으로 이은 선과 로봇 수직 중심선 사이의 각도다.
+        hurdle_line_coeffs = fit_line(line_points)
+        if hurdle_line_coeffs is not None:
+            hurdle_b, _hurdle_c = hurdle_line_coeffs
+            payload["hurdle_line_angle_deg"] = float(
+                math.degrees(math.atan2(-hurdle_b, 1.0))
+            )
 
     # 점 2~3개는 검출점 전체를 직선으로 피팅한다.
     # 점 2개에서는 LineDecision이 follow_angle을 사용하고, 점 3개에서는
@@ -465,7 +588,7 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
                 else:
                     payload["line_angle"] = fitted_angle
 
-    # 점 4개 이상이면 검출점 전체로 2차함수를 피팅한다. 두 번째로 가까운
+    # 점 4개 이상이면 검출점 전체로 2차함수를 피팅한다. 세 번째로 가까운
     # 점에서 구한 접선각을 line_angle에도 넣어 실제 주행 모드 판단에 사용한다.
     if point_count >= 4:
         coeffs = fit_poly2(line_points)
@@ -473,8 +596,8 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
             a, b, _c = coeffs
             payload["curve_a"] = float(a)
 
-            y2 = line_points[1][1]
-            slope_dx_dy_down = 2.0 * a * y2 + b
+            tangent_y = line_points[2][1]
+            slope_dx_dy_down = 2.0 * a * tangent_y + b
             # 이미지 y는 아래로 증가하므로, 로봇 진행 방향인 위쪽 기준으로 부호 반전
             payload["tangent_angle"] = float(math.degrees(math.atan2(-slope_dx_dy_down, 1.0)))
             payload["line_angle"] = payload["tangent_angle"]
@@ -559,93 +682,77 @@ def best_object_payload(dets: list[ObjectDetection], cfg: dict, class_key: str, 
     }
 
 
+def add_ball_geometry(
+    payload: dict,
+    frame_w: int,
+    frame_h: int,
+    robot_center_offset_x_px: float = 25.0,
+) -> dict:
+    """공 중심과 로봇 하단 기준점 사이의 화면상 기하 정보를 추가한다."""
+    robot_x = min(
+        max((float(frame_w) / 2.0) + float(robot_center_offset_x_px), 0.0),
+        max(0.0, float(frame_w - 1)),
+    )
+    robot_y = max(0.0, float(frame_h - 1))
+
+    payload["robot_center_x"] = robot_x
+    payload["robot_center_y"] = robot_y
+    payload["ball_x_offset_px"] = None
+    payload["ball_x_distance_px"] = None
+    payload["ball_y_distance_px"] = None
+    payload["ball_distance_px"] = None
+    payload["ball_angle_deg"] = None
+
+    if not bool(payload.get("ball_detected", False)):
+        return payload
+
+    try:
+        ball_x = float(payload["ball_x"])
+        ball_y = float(payload["ball_y"])
+    except (KeyError, TypeError, ValueError):
+        return payload
+
+    if not math.isfinite(ball_x) or not math.isfinite(ball_y):
+        return payload
+
+    # x는 로봇 중심선을 기준으로 왼쪽이 음수, 오른쪽이 양수다.
+    # 화면 표시와 BallStatusPublisher 전달값 모두 같은 signed 값을 사용한다.
+    dx = ball_x - robot_x
+    x_distance = dx
+    y_distance = abs(robot_y - ball_y)
+    payload["ball_x_offset_px"] = float(dx)
+    payload["ball_x_distance_px"] = float(x_distance)
+    payload["ball_y_distance_px"] = float(y_distance)
+    payload["ball_distance_px"] = float(math.hypot(x_distance, y_distance))
+    payload["ball_angle_deg"] = float(math.degrees(math.atan2(dx, y_distance)))
+    return payload
+
+
 def make_vision_payload(dets: list[ObjectDetection], line_points: list[tuple[float, float]], frame_w: int, frame_h: int, cfg: dict) -> dict:
     payload = make_line_payload(line_points, frame_w, frame_h)
     payload.update(best_object_payload(dets, cfg, "ball", frame_w, frame_h))
     payload.update(best_object_payload(dets, cfg, "hurdle", frame_w, frame_h))
-    add_hurdle_line_intersection(payload, line_points, frame_w, frame_h)
-    return payload
-
-
-def add_hurdle_line_intersection(
-    payload: dict,
-    line_points: list[tuple[float, float]],
-    frame_w: int,
-    frame_h: int,
-) -> dict:
-    """웹캠 라인과 허들 중심축의 교차점 및 부호 있는 방위각을 계산한다.
-
-    각도 기준은 기존 라인 ``follow_angle``과 같다. 화면 아래 중앙을 로봇
-    중심으로 보고 정면(화면 위쪽)을 0도로 두며, 왼쪽은 음수, 오른쪽은
-    양수다. 라인 피팅에 점이 두 개 이상 필요하고, 계산된 교차점이 실제
-    허들 bbox 안에 있을 때만 유효한 교차점으로 취급한다.
-    """
-    payload.update({
-        "hurdle_line_intersection_valid": False,
-        "hurdle_line_intersection_x": -1.0,
-        "hurdle_line_intersection_y": -1.0,
-        "hurdle_intersection_angle_deg": 0.0,
-        "hurdle_intersection_sign": 0,
-        "hurdle_intersection_direction": "unknown",
-    })
-
-    if not bool(payload.get("hurdle_detected", False)) or len(line_points) < 2:
-        return payload
-
-    bbox = payload.get("hurdle_bbox", [])
-    if not isinstance(bbox, (list, tuple)) or len(bbox) != 4:
-        return payload
-
-    try:
-        x1, y1, x2, y2 = [float(value) for value in bbox]
-    except (TypeError, ValueError):
-        return payload
-    if not all(math.isfinite(value) for value in (x1, y1, x2, y2)):
-        return payload
-
-    hurdle_y = (y1 + y2) / 2.0
-    coeffs = fit_line(line_points) if len(line_points) <= 3 else fit_poly2(line_points)
-    if coeffs is None:
-        return payload
-
-    intersection_x = float(np.polyval(coeffs, hurdle_y))
-    if not math.isfinite(intersection_x):
-        return payload
-
-    # 무한 직선끼리의 교차가 아니라 화면 속 허들 bbox 위의 실제 교차인지 확인한다.
-    if not (
-        0.0 <= intersection_x < float(frame_w)
-        and 0.0 <= hurdle_y < float(frame_h)
-        and min(x1, x2) <= intersection_x <= max(x1, x2)
-    ):
-        return payload
-
-    robot_x = frame_w / 2.0
-    robot_y = float(frame_h)
-    signed_angle = float(
-        math.degrees(math.atan2(intersection_x - robot_x, robot_y - hurdle_y))
+    return add_ball_geometry(
+        payload,
+        frame_w,
+        frame_h,
+        float(cfg.get("robot_center_offset_x_px", 25.0)),
     )
-    if not math.isfinite(signed_angle):
-        return payload
-
-    sign = -1 if signed_angle < 0.0 else (1 if signed_angle > 0.0 else 0)
-    direction = "left" if sign < 0 else ("right" if sign > 0 else "center")
-    payload.update({
-        "hurdle_line_intersection_valid": True,
-        "hurdle_line_intersection_x": intersection_x,
-        "hurdle_line_intersection_y": hurdle_y,
-        "hurdle_intersection_angle_deg": signed_angle,
-        "hurdle_intersection_sign": sign,
-        "hurdle_intersection_direction": direction,
-    })
-    return payload
 
 
 # ═══════════════════════════════════════════════════════
 #  시각화
 # ═══════════════════════════════════════════════════════
 
-def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_points, payload: dict, roi_box, cfg: dict):
+def visualize_yolo(
+    frame: np.ndarray,
+    dets: list[ObjectDetection],
+    raw_line_points,
+    payload: dict,
+    roi_box,
+    cfg: dict,
+    motion_state: Optional[MotionDisplayState] = None,
+):
     vis = frame.copy()
     h, w = vis.shape[:2]
     roi_top, roi_bottom, roi_left, roi_right = roi_box
@@ -662,8 +769,14 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
     ]
     display_line_points.sort(key=lambda point: -point[1])
 
+    robot_x = int(round(float(payload.get("robot_center_x", (w / 2.0) + 25.0))))
+    robot_y = int(round(float(payload.get("robot_center_y", h - 1))))
+    robot_x = min(max(robot_x, 0), max(0, w - 1))
+    robot_y = min(max(robot_y, 0), max(0, h - 1))
+    light_sky_blue = (250, 206, 135)  # OpenCV BGR
+
     cv2.rectangle(vis, (roi_left, roi_top), (roi_right, roi_bottom), (80, 80, 80), 2)
-    cv2.line(vis, (w // 2, h), (w // 2, roi_top), (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.line(vis, (robot_x, robot_y), (robot_x, roi_top), (200, 200, 200), 1, cv2.LINE_AA)
 
     # YOLO boxes
     for d in dets:
@@ -705,7 +818,35 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
     if show_target_marker and payload["target_x"] >= 0 and payload["target_y"] >= 0:
         tx, ty = int(payload["target_x"]), int(payload["target_y"])
         cv2.drawMarker(vis, (tx, ty), (0, 0, 255), cv2.MARKER_CROSS, 24, 2)
-        cv2.line(vis, (w // 2, h), (tx, ty), (0, 0, 255), 1, cv2.LINE_AA)
+        cv2.line(vis, (robot_x, robot_y), (tx, ty), (0, 0, 255), 1, cv2.LINE_AA)
+
+    # 공 중심과 로봇 하단 기준점을 연결하고 수직 기준선 대비 각도를 표시한다.
+    if bool(payload.get("ball_detected", False)):
+        ball_x = int(round(float(payload.get("ball_x", -1.0))))
+        ball_y = int(round(float(payload.get("ball_y", -1.0))))
+        ball_angle = payload.get("ball_angle_deg")
+        if 0 <= ball_x < w and 0 <= ball_y < h and ball_angle is not None:
+            cv2.line(
+                vis,
+                (robot_x, robot_y),
+                (ball_x, ball_y),
+                light_sky_blue,
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.circle(vis, (ball_x, ball_y), 5, light_sky_blue, -1)
+            label_x = min(max((robot_x + ball_x) // 2 + 6, 0), max(0, w - 90))
+            label_y = min(max((robot_y + ball_y) // 2, 15), max(15, h - 5))
+            cv2.putText(
+                vis,
+                f"{float(ball_angle):+.1f}deg",
+                (label_x, label_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.42,
+                light_sky_blue,
+                1,
+                cv2.LINE_AA,
+            )
 
     # 2~3개는 직선, 4개 이상은 이차곡선으로 표시한다. 두 경우 모두
     # 실제 검출점의 y 범위에서만 그려 데이터가 없는 영역으로 외삽하지 않는다.
@@ -732,25 +873,6 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
                     2,
                     cv2.LINE_AA,
                 )
-
-    # 라인-허들 교차점과 로봇 중심에서 교차점까지의 signed-angle 벡터.
-    if bool(payload.get("hurdle_line_intersection_valid", False)):
-        cross_x = int(round(float(payload["hurdle_line_intersection_x"])))
-        cross_y = int(round(float(payload["hurdle_line_intersection_y"])))
-        robot_center = (w // 2, h - 1)
-        cross_point = (cross_x, cross_y)
-        sky_blue = (250, 206, 135)
-        cv2.line(vis, robot_center, cross_point, sky_blue, 2, cv2.LINE_AA)
-        cv2.drawMarker(
-            vis,
-            cross_point,
-            (255, 255, 255),
-            cv2.MARKER_CROSS,
-            24,
-            3,
-            cv2.LINE_AA,
-        )
-        cv2.circle(vis, cross_point, 8, sky_blue, 2, cv2.LINE_AA)
 
     def draw_text_panel(
         panel_lines,
@@ -808,32 +930,56 @@ def visualize_yolo(frame: np.ndarray, dets: list[ObjectDetection], raw_line_poin
                 font_thickness,
                 cv2.LINE_AA,
             )
+        return panel_bottom
 
-    # 허들 정보는 오른쪽 상단의 작은 전용 패널에만 표시한다.
+    # 공이 검출되면 기존 허들 패널과 같은 크기의 공 정보 패널을 우측 상단에 표시한다.
+    next_right_panel_y = 4
+    ball_detected = bool(payload.get("ball_detected", False))
+    if ball_detected:
+        ball_angle = payload.get("ball_angle_deg")
+        ball_dx = payload.get("ball_x_distance_px")
+        ball_dy = payload.get("ball_y_distance_px")
+        ball_lines = [
+            f"BALL:YES conf:{float(payload.get('ball_conf', 0.0)):.2f}",
+            (
+                f"ang:{float(ball_angle):+.1f} x:{float(ball_dx):+.0f} y:{float(ball_dy):.0f}px"
+                if ball_angle is not None and ball_dx is not None and ball_dy is not None
+                else "ang:N/A x:N/A y:N/A"
+            ),
+        ]
+        panel_bottom = draw_text_panel(
+            ball_lines,
+            panel_y=next_right_panel_y,
+            font_scale=0.32,
+            border_color=light_sky_blue,
+            align="right",
+        )
+        next_right_panel_y = panel_bottom + 4
+
+    # 허들 정보는 실제 허들이 검출된 동안에만 표시한다.
     hurdle_detected = bool(payload.get("hurdle_detected", False))
-    hurdle_lines = [
-        (
-            f"HURDLE:{'YES' if hurdle_detected else 'NO'} "
-            f"conf:{float(payload.get('hurdle_conf', 0.0)):.2f}"
-        ),
-        (
-            f"angle:{payload['hurdle_intersection_angle_deg']:+.1f}deg "
-            f"{str(payload['hurdle_intersection_direction']).upper()}"
-            if payload.get("hurdle_line_intersection_valid", False)
-            else "angle:N/A"
-        ),
-    ]
-    draw_text_panel(
-        hurdle_lines,
-        panel_y=4,
-        font_scale=0.32,
-        border_color=(250, 206, 135),
-        align="right",
-    )
+    if hurdle_detected:
+        hurdle_line_angle = payload.get("hurdle_line_angle_deg")
+        hurdle_lines = [
+            f"HURDLE:YES conf:{float(payload.get('hurdle_conf', 0.0)):.2f}",
+            (
+                f"line angle:{float(hurdle_line_angle):+.1f}deg"
+                if hurdle_line_angle is not None
+                else "line angle:N/A"
+            ),
+        ]
+        draw_text_panel(
+            hurdle_lines,
+            panel_y=next_right_panel_y,
+            font_scale=0.32,
+            border_color=light_sky_blue,
+            align="right",
+        )
 
-    # 기존 라인 정보는 별도 패널로 왼쪽 상단에 유지한다.
+    # 왼쪽 상단에는 프레임 판단 status 대신 실제 motion 노드의 실행
+    # 모션을 표시합니다. 나머지 라인 검출 진단값은 그대로 유지합니다.
     line_lines = [
-        f"st:{payload['status']} {payload['status_name'][:12]}",
+        *motion_overlay_lines(motion_state),
         f"pc:{payload['point_count']} dist:{payload['line_distance']:+.0f}px",
         f"ang:{payload['line_angle']:+.1f} tan:{payload['tangent_angle']:+.1f}",
         f"a:{payload['curve_a']:+.1e} f_ang:{payload['follow_angle']:+.1f}",
@@ -856,6 +1002,7 @@ def analyze_frame_yolo(
     model,
     cfg: dict,
     line_status_publisher: Optional[LineStatusPublisher] = None,
+    motion_state: Optional[MotionDisplayState] = None,
 ) -> tuple[dict, np.ndarray]:
     h, w = frame.shape[:2]
     dets = yolo_detect(model, frame, cfg)
@@ -870,7 +1017,15 @@ def analyze_frame_yolo(
     # 디버깅용으로 raw 개수도 같이 넣어둠. 알고리즘 쪽에서 안 쓰면 무시해도 됨.
     payload["raw_point_count"] = int(len(raw_line_points))
 
-    vis = visualize_yolo(frame, dets, raw_line_points, payload, roi_box, cfg)
+    vis = visualize_yolo(
+        frame,
+        dets,
+        raw_line_points,
+        payload,
+        roi_box,
+        cfg,
+        motion_state,
+    )
     return payload, vis
 
 
@@ -880,7 +1035,9 @@ def analyze_frame_yolo(
 
 def main_ros2(ini_path: str = "settings.ini"):
     import rclpy
+    from msgs.msg import MotionCommand, MotionEnd
     from rclpy.node import Node
+    from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from sensor_msgs.msg import Image
     from std_msgs.msg import String
     from cv_bridge import CvBridge
@@ -895,6 +1052,7 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.frame_count = 0
             self.inference_failures = 0
             self.last_model_reload = 0.0
+            self.motion_display_state = MotionDisplayState()
             self.model = load_yolo_model(self.cfg)
             # YOLO is interested in the newest camera frame only.  A deep reliable
             # queue retains stale full-resolution images while TensorRT is busy and
@@ -906,6 +1064,23 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
             self.line_status_publisher = LineStatusPublisher(self)
+            self.motion_command_sub = self.create_subscription(
+                MotionCommand,
+                "/motion_command",
+                self.cb_motion_command,
+                10,
+            )
+            motion_state_qos = QoSProfile(
+                depth=1,
+                reliability=ReliabilityPolicy.RELIABLE,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            )
+            self.motion_end_sub = self.create_subscription(
+                MotionEnd,
+                "/motion_end",
+                self.cb_motion_end,
+                motion_state_qos,
+            )
             self.hurdle_status_publisher = (
                 HurdleStatusPublisher(self)
                 if self.cfg.get("publish_hurdle_result", False)
@@ -913,12 +1088,21 @@ def main_ros2(ini_path: str = "settings.ini"):
             )
 
             # 공의 최종 BallStatus 판단은 별도 ball_vision_fusion.py가 담당한다.
-            # 이 노드는 /line_tracker/state에 ball_detected, ball_x, ball_y,
-            # ball_conf, ball_bbox만 담아 웹캠 Vision 결과를 전달한다.
+            # 이 노드는 /line_tracker/state에 공 검출값과 기준점 대비
+            # angle/x/y 픽셀 거리를 담아 웹캠 Vision 결과를 전달한다.
             self.get_logger().info(f"YoloVisionNode started cfg={ini_path}")
             self.get_logger().info(
                 "YOLO direct hurdle_result publish="
                 f"{bool(self.hurdle_status_publisher is not None)}"
+            )
+
+        def cb_motion_command(self, msg: MotionCommand):
+            self.motion_display_state.on_command(msg.command)
+
+        def cb_motion_end(self, msg: MotionEnd):
+            self.motion_display_state.on_motion_state(
+                msg.motion_end,
+                msg.motion_ready,
             )
 
         def publish_hurdle_status(self, payload: dict):
@@ -929,13 +1113,22 @@ def main_ros2(ini_path: str = "settings.ini"):
                 payload["hurdle_result_publisher"] = "hurdle_vision_fusion"
                 return
 
-            hurdle_status, hurdle_angle = (
+            hurdle_status, hurdle_angle, hurdle_ready = (
                 self.hurdle_status_publisher.publish_hurdle_status(
                     hurdle_detected=bool(payload.get("hurdle_detected", False)),
+                    line_point_count=int(payload.get("point_count", 0)),
+                    line_follow_angle_deg=payload.get("follow_angle"),
+                    line_second_point_distance_px=payload.get(
+                        "line_second_point_distance_px"
+                    )
+                    or 0.0,
+                    line_angle_deg=payload.get("hurdle_line_angle_deg")
+                    or 0.0,
                 )
             )
             payload["hurdle_status"] = int(hurdle_status)
             payload["hurdle_status_angle"] = float(hurdle_angle)
+            payload["hurdle_ready"] = bool(hurdle_ready)
             payload["hurdle_result_publisher"] = "yolo_vision"
 
         def cb_image(self, msg: Image):
@@ -949,6 +1142,7 @@ def main_ros2(ini_path: str = "settings.ini"):
                     self.model,
                     self.cfg,
                     self.line_status_publisher,
+                    self.motion_display_state,
                 )
                 self.inference_failures = 0
             except Exception:
@@ -997,8 +1191,8 @@ def main_ros2(ini_path: str = "settings.ini"):
                     f"ang={payload['line_angle']:+.1f} "
                     f"a={payload['curve_a']:+.2e} "
                     f"ball={payload['ball_detected']} hurdle={payload['hurdle_detected']} "
-                    f"h_cross={payload['hurdle_line_intersection_valid']} "
-                    f"h_ang={payload['hurdle_intersection_angle_deg']:+.1f}"
+                    f"h_dist={payload.get('line_second_point_distance_px')} "
+                    f"h_line_ang={payload.get('hurdle_line_angle_deg')}"
                 )
 
     rclpy.init()
