@@ -164,10 +164,10 @@ class RealSenseDebugSelector(Node):
             and now - self.hoop_state_time <= self.state_timeout_sec
         )
 
-        if ball_active:
-            return "ball"
         if hoop_active:
             return "hoop"
+        if ball_active:
+            return "ball"
         if hurdle_active:
             return "hurdle"
         return "default"

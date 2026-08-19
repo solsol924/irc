@@ -156,19 +156,17 @@ class VisionStatusMonitor(Node):
             if not self._fresh("hoop_state"):
                 hoop_text = "STALE"
             elif bool(self.hoop_state.get("detected", False)):
-                distance = self.hoop_state.get("distance_cm")
-                angle = self.hoop_state.get("center_angle_deg")
-                yaw = self.hoop_state.get("yaw_deg")
+                distance = self.hoop_state.get("realsense_goal_distance_cm")
+                angle = self.hoop_state.get("realsense_goal_angle")
                 distance_text = (
                     f"{float(distance):.1f}cm" if distance is not None else "N/A"
                 )
                 angle_text = (
                     f"{float(angle):+.1f}" if angle is not None else "N/A"
                 )
-                yaw_text = f"{float(yaw):+.1f}" if yaw is not None else "N/A"
                 hoop_text = (
                     f"det=1 dist={distance_text} "
-                    f"angle={angle_text} yaw={yaw_text}"
+                    f"angle={angle_text}"
                 )
             else:
                 hoop_text = "det=0"

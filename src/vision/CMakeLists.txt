@@ -26,6 +26,10 @@ if(BUILD_TESTING)
     test_ball_detector_core
     test/test_ball_detector_core.py
   )
+  ament_add_pytest_test(
+    test_hoop_vision_geometry
+    test/test_hoop_vision_geometry.py
+  )
 endif()
 
 install(PROGRAMS

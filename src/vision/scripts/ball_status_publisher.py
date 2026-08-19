@@ -170,6 +170,9 @@ class BallStatusPublisher:
         webcam_ball_angle_error: Optional[float] = None,
         webcam_ball_distance_px: Optional[float] = None,
         ball_in_hand: bool = False,
+        hoop_detected: bool = False,
+        realsense_goal_distance_cm: Optional[float] = None,
+        realsense_goal_angle: Optional[float] = None,
     ) -> Tuple[int, float]:
         features = BallFeatures(
             realsense_ball_detected=realsense_ball_detected,
@@ -202,6 +205,20 @@ class BallStatusPublisher:
             msg.x_distance_px = float(webcam_ball_x_distance or 0.0)
         if hasattr(msg, 'y_distance_px'):
             msg.y_distance_px = float(webcam_ball_y_distance or 0.0)
+        if hasattr(msg, 'hoop_detected'):
+            msg.hoop_detected = bool(hoop_detected)
+        if hasattr(msg, 'realsense_goal_distance_cm'):
+            msg.realsense_goal_distance_cm = float(
+                realsense_goal_distance_cm
+                if hoop_detected and realsense_goal_distance_cm is not None
+                else 0.0
+            )
+        if hasattr(msg, 'realsense_goal_angle'):
+            msg.realsense_goal_angle = float(
+                realsense_goal_angle
+                if hoop_detected and realsense_goal_angle is not None
+                else 0.0
+            )
 
         self.ball_pub.publish(msg)
 

@@ -7,7 +7,7 @@ RealSense OpenCV Hoop Vision Node
 2. HSV 색공간에서 빨간 테두리와 흰색 내부를 분리한다.
 3. 빨간 컨투어의 회전 사각형을 기준으로 위/왼쪽/오른쪽 테두리 비율을 검사한다.
 4. 내부 흰색 비율과 depth 유효성을 함께 검사해 골대 후보를 확정한다.
-5. 골대 중심, 거리, 화면 중심 오차각, 백보드 yaw를 계산한다.
+5. 백보드 중심까지의 3차원 거리와 로봇 중심선 기준 좌우 오차각을 계산한다.
 6. JSON 상태와 디버그 이미지를 ROS 2 토픽으로 발행한다.
 
 입력
@@ -111,12 +111,18 @@ class HoopVisionNode(Node):
         self.declare_parameter("depth_min_m", 0.08)
         self.declare_parameter("depth_max_m", 2.0)
         self.declare_parameter("min_valid_depth_pixels", 20)
+        # 백보드 중심 픽셀에 depth hole이 생겨도 주변의 작은 영역에서
+        # 안정적으로 중앙값을 구할 수 있도록 한다.
+        self.declare_parameter("center_depth_patch_radius", 5)
+        self.declare_parameter("min_valid_center_depth_pixels", 5)
+
+        # RealSense 화면의 정확한 하단 중앙을 로봇 기준점으로 사용한다.
 
         # =========================================================
         # 안정화 및 출력
         # =========================================================
         self.declare_parameter("morph_kernel_size", 5)
-        self.declare_parameter("hold_frames", 3)
+        self.declare_parameter("hold_seconds", 0.5)
         self.declare_parameter("smoothing_window", 5)
         self.declare_parameter("publish_debug_image", True)
         self.declare_parameter("show_window", False)
@@ -192,8 +198,19 @@ class HoopVisionNode(Node):
         self.min_valid_depth_pixels = int(
             self.get_parameter("min_valid_depth_pixels").value
         )
+        self.center_depth_patch_radius = max(
+            0,
+            int(self.get_parameter("center_depth_patch_radius").value),
+        )
+        self.min_valid_center_depth_pixels = max(
+            1,
+            int(self.get_parameter("min_valid_center_depth_pixels").value),
+        )
 
-        self.hold_frames = max(0, int(self.get_parameter("hold_frames").value))
+        self.hold_seconds = max(
+            0.0,
+            float(self.get_parameter("hold_seconds").value),
+        )
         self.smoothing_window = max(
             1, int(self.get_parameter("smoothing_window").value)
         )
@@ -220,7 +237,7 @@ class HoopVisionNode(Node):
         self.bridge = CvBridge()
         self.frame_count = 0
         self.last_detection: Optional[Dict[str, Any]] = None
-        self.lost_frames = self.hold_frames
+        self.last_detection_time: Optional[float] = None
         self.history: Deque[Dict[str, Any]] = deque(
             maxlen=self.smoothing_window
         )
@@ -286,7 +303,8 @@ class HoopVisionNode(Node):
             "white_s_high",
             "white_v_low",
             "min_valid_depth_pixels",
-            "hold_frames",
+            "center_depth_patch_radius",
+            "min_valid_center_depth_pixels",
             "smoothing_window",
             "print_every_n_frames",
         }
@@ -306,6 +324,7 @@ class HoopVisionNode(Node):
             "depth_scale",
             "depth_min_m",
             "depth_max_m",
+            "hold_seconds",
         }
 
         try:
@@ -350,12 +369,21 @@ class HoopVisionNode(Node):
                 reason="depth_min_m must be smaller than depth_max_m",
             )
 
+        self.center_depth_patch_radius = max(
+            0,
+            int(self.center_depth_patch_radius),
+        )
+        self.min_valid_center_depth_pixels = max(
+            1,
+            int(self.min_valid_center_depth_pixels),
+        )
+
         # smoothing_window 변경 시 deque 크기도 갱신한다.
         new_window = max(1, int(self.smoothing_window))
         if self.history.maxlen != new_window:
             self.history = deque(list(self.history)[-new_window:], maxlen=new_window)
 
-        self.hold_frames = max(0, int(self.hold_frames))
+        self.hold_seconds = max(0.0, float(self.hold_seconds))
         self.print_every_n_frames = max(1, int(self.print_every_n_frames))
         return SetParametersResult(successful=True)
 
@@ -479,24 +507,33 @@ class HoopVisionNode(Node):
             roi_depth_m=depth_m,
             roi_x_start=x1,
             roi_y_start=y1,
+            frame_width=frame_w,
+            frame_height=frame_h,
         )
 
         held_previous = False
         if raw_detection is not None:
-            self.lost_frames = 0
             self.history.append(raw_detection)
             smoothed = self._smooth_detection(raw_detection)
             self.last_detection = dict(smoothed)
+            self.last_detection_time = start_time
             published_detection = smoothed
-        elif self.last_detection is not None and self.lost_frames < self.hold_frames:
-            self.lost_frames += 1
+        elif (
+            self.last_detection is not None
+            and self._hold_is_active(
+                last_detection_time=self.last_detection_time,
+                current_time=start_time,
+                hold_seconds=self.hold_seconds,
+            )
+        ):
             held_previous = True
             published_detection = dict(self.last_detection)
             published_detection["held_previous_detection"] = True
             published_detection["raw_detected"] = False
         else:
-            self.lost_frames = self.hold_frames
             self.history.clear()
+            self.last_detection = None
+            self.last_detection_time = None
             published_detection = None
 
         process_ms = (time.perf_counter() - start_time) * 1000.0
@@ -536,9 +573,8 @@ class HoopVisionNode(Node):
             else:
                 self.get_logger().info(
                     "hoop detected "
-                    f"dist={published_detection['distance_cm']:.1f} cm "
-                    f"center_ang={published_detection['center_angle_deg']:+.1f} deg "
-                    f"yaw={published_detection['yaw_deg']:+.1f} deg "
+                    f"dist={published_detection['realsense_goal_distance_cm']:.1f} cm "
+                    f"center_ang={published_detection['realsense_goal_angle']:+.1f} deg "
                     f"held={published_detection.get('held_previous_detection', False)} "
                     f"process={process_ms:.1f} ms"
                 )
@@ -589,6 +625,94 @@ class HoopVisionNode(Node):
         hits = int(cv2.countNonZero(cv2.bitwise_and(source_mask, region_mask)))
         return float(hits) / float(area)
 
+    @staticmethod
+    def _rectangle_center(box: np.ndarray) -> np.ndarray:
+        """직사각형의 두 대각선이 만나는 중심점을 반환한다."""
+        points = np.asarray(box, dtype=np.float32)
+        return 0.5 * (points[0] + points[2])
+
+    @staticmethod
+    def _robot_reference_point(
+        frame_width: int,
+        frame_height: int,
+    ) -> Tuple[float, float]:
+        """화면 최하단에서 로봇 중심선의 기준점을 반환한다."""
+        return (
+            float(max(1, frame_width)) / 2.0,
+            float(max(1, frame_height) - 1),
+        )
+
+    @staticmethod
+    def _centerline_error_angle_deg(
+        center_x: float,
+        center_y: float,
+        robot_x: float,
+        robot_y: float,
+    ) -> Optional[float]:
+        """공 각도와 같은 화면 기하식으로 백보드 중심의 좌우 각도를 계산한다."""
+        x_distance = center_x - robot_x
+        y_distance = abs(robot_y - center_y)
+        if y_distance <= 0.0:
+            return None
+        return math.degrees(math.atan2(x_distance, y_distance))
+
+    @staticmethod
+    def _center_pixel_offsets(
+        center_x: float,
+        center_y: float,
+        robot_x: float,
+        robot_y: float,
+    ) -> Tuple[float, float]:
+        """로봇 하단 중심 기준 백보드 중심의 수평/수직 픽셀 차이를 반환한다."""
+        return center_x - robot_x, robot_y - center_y
+
+    @staticmethod
+    def _hold_is_active(
+        last_detection_time: Optional[float],
+        current_time: float,
+        hold_seconds: float,
+    ) -> bool:
+        """마지막 검출 후 설정 시간 안이면 이전 검출을 유지한다."""
+        if last_detection_time is None:
+            return False
+        return (current_time - last_detection_time) <= max(0.0, hold_seconds)
+
+    def _center_depth_m(
+        self,
+        roi_depth_m: np.ndarray,
+        center_x: float,
+        center_y: float,
+    ) -> Optional[float]:
+        """백보드 중심 주변의 유효 depth 중앙값을 반환한다."""
+        height, width = roi_depth_m.shape[:2]
+        cx = int(round(center_x))
+        cy = int(round(center_y))
+        radius = self.center_depth_patch_radius
+        x1 = max(0, cx - radius)
+        x2 = min(width, cx + radius + 1)
+        y1 = max(0, cy - radius)
+        y2 = min(height, cy + radius + 1)
+        patch = roi_depth_m[y1:y2, x1:x2]
+        valid = patch[
+            np.isfinite(patch)
+            & (patch >= self.depth_min_m)
+            & (patch <= self.depth_max_m)
+        ]
+        if valid.size < self.min_valid_center_depth_pixels:
+            return None
+        return float(np.median(valid))
+
+    def _center_distance_m(
+        self,
+        center_x: float,
+        center_y: float,
+        depth_m: float,
+    ) -> float:
+        """카메라 원점에서 백보드 중심까지의 3차원 직선거리를 계산한다."""
+        x_m = (center_x - self.cx_intr) * depth_m / self.fx
+        y_m = (center_y - self.cy_intr) * depth_m / self.fy
+        return math.sqrt(x_m * x_m + y_m * y_m + depth_m * depth_m)
+
     def _find_best_hoop(
         self,
         red_mask: np.ndarray,
@@ -596,6 +720,8 @@ class HoopVisionNode(Node):
         roi_depth_m: np.ndarray,
         roi_x_start: int,
         roi_y_start: int,
+        frame_width: int,
+        frame_height: int,
     ) -> Optional[Dict[str, Any]]:
         contours, _ = cv2.findContours(
             red_mask.copy(),
@@ -722,52 +848,42 @@ class HoopVisionNode(Node):
             if valid_inner_depth.size < self.min_valid_depth_pixels:
                 continue
 
-            distance_m = float(np.median(valid_inner_depth))
-
-            left_depth_values = roi_depth_m[left_mask.astype(bool)]
-            right_depth_values = roi_depth_m[right_mask.astype(bool)]
-            valid_left = left_depth_values[
-                np.isfinite(left_depth_values)
-                & (left_depth_values >= self.depth_min_m)
-                & (left_depth_values <= self.depth_max_m)
-            ]
-            valid_right = right_depth_values[
-                np.isfinite(right_depth_values)
-                & (right_depth_values >= self.depth_min_m)
-                & (right_depth_values <= self.depth_max_m)
-            ]
-
-            if (
-                valid_left.size < self.min_valid_depth_pixels
-                or valid_right.size < self.min_valid_depth_pixels
-            ):
-                continue
-
-            depth_left_m = float(np.median(valid_left))
-            depth_right_m = float(np.median(valid_right))
-
-            center_roi = box.mean(axis=0)
+            # 회전 직사각형의 대각선 교점이 백보드 중심이다.
+            center_roi = self._rectangle_center(box)
             center_x = float(center_roi[0] + roi_x_start)
             center_y = float(center_roi[1] + roi_y_start)
-            center_angle_deg = math.degrees(
-                math.atan2(center_x - self.cx_intr, self.fx)
+
+            center_depth_m = self._center_depth_m(
+                roi_depth_m,
+                float(center_roi[0]),
+                float(center_roi[1]),
+            )
+            if center_depth_m is None:
+                continue
+            distance_m = self._center_distance_m(
+                center_x,
+                center_y,
+                center_depth_m,
             )
 
-            left_center_roi = left_poly.mean(axis=0)
-            right_center_roi = right_poly.mean(axis=0)
-            left_x_full = float(left_center_roi[0] + roi_x_start)
-            right_x_full = float(right_center_roi[0] + roi_x_start)
-
-            x_left_m = (left_x_full - self.cx_intr) * depth_left_m / self.fx
-            x_right_m = (right_x_full - self.cx_intr) * depth_right_m / self.fx
-            dx_m = x_right_m - x_left_m
-            dz_m = depth_left_m - depth_right_m
-
-            if abs(dx_m) < 1e-4:
+            robot_x, robot_y = self._robot_reference_point(
+                frame_width,
+                frame_height,
+            )
+            realsense_goal_angle = self._centerline_error_angle_deg(
+                center_x,
+                center_y,
+                robot_x,
+                robot_y,
+            )
+            if realsense_goal_angle is None:
                 continue
-
-            # 양수: 오른쪽 테두리가 카메라에 더 가까운 방향.
-            yaw_deg = math.degrees(math.atan2(dz_m, dx_m))
+            goal_center_dx_px, goal_center_dy_px = self._center_pixel_offsets(
+                center_x,
+                center_y,
+                robot_x,
+                robot_y,
+            )
 
             red_band_ratio = (
                 top_red_ratio + left_red_ratio + right_red_ratio
@@ -788,11 +904,13 @@ class HoopVisionNode(Node):
                 "held_previous_detection": False,
                 "center_x": center_x,
                 "center_y": center_y,
-                "distance_cm": distance_m * 100.0,
-                "center_angle_deg": center_angle_deg,
-                "yaw_deg": yaw_deg,
-                "depth_left_cm": depth_left_m * 100.0,
-                "depth_right_cm": depth_right_m * 100.0,
+                "realsense_goal_distance_cm": distance_m * 100.0,
+                "realsense_goal_angle": realsense_goal_angle,
+                "goal_center_dx_px": goal_center_dx_px,
+                "goal_center_dy_px": goal_center_dy_px,
+                "center_depth_cm": center_depth_m * 100.0,
+                "robot_center_x": float(robot_x),
+                "robot_bottom_y": float(robot_y),
                 "top_red_ratio": top_red_ratio,
                 "left_red_ratio": left_red_ratio,
                 "right_red_ratio": right_red_ratio,
@@ -810,16 +928,11 @@ class HoopVisionNode(Node):
         self,
         current: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """최근 검출값의 중앙값을 사용해 거리와 각도 흔들림을 줄인다."""
+        """최근 검출값의 중앙값을 사용해 거리와 색상 비율 흔들림을 줄인다."""
         output = dict(current)
         numeric_keys = (
-            "center_x",
-            "center_y",
-            "distance_cm",
-            "center_angle_deg",
-            "yaw_deg",
-            "depth_left_cm",
-            "depth_right_cm",
+            "realsense_goal_distance_cm",
+            "center_depth_cm",
             "top_red_ratio",
             "left_red_ratio",
             "right_red_ratio",
@@ -857,11 +970,13 @@ class HoopVisionNode(Node):
                 "held_previous_detection": False,
                 "center_x": None,
                 "center_y": None,
-                "distance_cm": None,
-                "center_angle_deg": None,
-                "yaw_deg": None,
-                "depth_left_cm": None,
-                "depth_right_cm": None,
+                "realsense_goal_distance_cm": None,
+                "realsense_goal_angle": None,
+                "goal_center_dx_px": None,
+                "goal_center_dy_px": None,
+                "center_depth_cm": None,
+                "robot_center_x": None,
+                "robot_bottom_y": None,
                 "top_red_ratio": None,
                 "left_red_ratio": None,
                 "right_red_ratio": None,
@@ -904,11 +1019,11 @@ class HoopVisionNode(Node):
         debug = frame.copy()
         x1, y1, x2, y2 = roi
 
-        color = (0, 0, 255)
-        if detection is not None:
-            color = (0, 255, 0)
-        if held_previous:
-            color = (0, 255, 255)
+        pastel_yellow = (170, 235, 255)
+        pastel_pink = (210, 190, 255)
+        pastel_cyan = (245, 235, 180)
+        white = (255, 255, 255)
+        color = pastel_yellow if detection is not None else (170, 170, 255)
 
         cv2.rectangle(debug, (x1, y1), (x2, y2), color, 2)
 
@@ -919,35 +1034,80 @@ class HoopVisionNode(Node):
 
             cx = int(round(float(detection["center_x"])))
             cy = int(round(float(detection["center_y"])))
-            cv2.circle(debug, (cx, cy), 5, (255, 0, 255), -1)
+            cv2.circle(debug, (cx, cy), 5, pastel_pink, -1)
+
+            robot_x = int(round(float(detection["robot_center_x"])))
+            robot_y = int(round(float(detection["robot_bottom_y"])))
+            # 흰 선은 로봇의 정면 중심선, 하늘색 선은 로봇 기준점에서
+            # 백보드 중심으로 향하는 선이다. 두 선이 만나는 각도가
+            # realsense_goal_angle이며 오른쪽은 양수, 왼쪽은 음수이다.
+            cv2.line(
+                debug,
+                (robot_x, 0),
+                (robot_x, debug.shape[0] - 1),
+                white,
+                1,
+            )
+            cv2.line(
+                debug,
+                (robot_x, robot_y),
+                (cx, cy),
+                pastel_cyan,
+                2,
+            )
+            cv2.circle(debug, (robot_x, robot_y), 5, white, -1)
+
+            target_screen_angle = (
+                math.degrees(math.atan2(cy - robot_y, cx - robot_x))
+                + 360.0
+            ) % 360.0
+            vertical_screen_angle = 270.0
+            arc_start = min(target_screen_angle, vertical_screen_angle)
+            arc_end = max(target_screen_angle, vertical_screen_angle)
+            arc_radius = max(20, min(debug.shape[:2]) // 10)
+            cv2.ellipse(
+                debug,
+                (robot_x, robot_y),
+                (arc_radius, arc_radius),
+                0.0,
+                arc_start,
+                arc_end,
+                pastel_cyan,
+                2,
+            )
+
+            angle_value = float(detection["realsense_goal_angle"])
+            angle_label_x = robot_x + 8 if angle_value >= 0.0 else robot_x - 76
+            angle_label_y = max(16, robot_y - arc_radius - 6)
+            cv2.putText(
+                debug,
+                f"{angle_value:+.1f}deg",
+                (angle_label_x, angle_label_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.42,
+                pastel_cyan,
+                1,
+                cv2.LINE_AA,
+            )
 
             state_name = "DETECTED" if raw_detected else "HOLD"
             panel_lines = [
                 f"HOOP:{state_name}",
                 (
-                    f"dist:{detection['distance_cm']:.1f}cm "
-                    f"ang:{detection['center_angle_deg']:+.1f}deg"
+                    "realsense_goal_distance_cm:"
+                    f"{detection['realsense_goal_distance_cm']:.1f}"
                 ),
-                (
-                    f"yaw:{detection['yaw_deg']:+.1f}deg "
-                    f"score:{detection['score']:.2f}"
-                ),
-                (
-                    f"R t:{detection['top_red_ratio']:.2f} "
-                    f"l:{detection['left_red_ratio']:.2f} "
-                    f"r:{detection['right_red_ratio']:.2f}"
-                ),
-                (
-                    f"white:{detection['white_inner_ratio']:.2f} "
-                    f"proc:{process_ms:.1f}ms"
-                ),
+                f"realsense_goal_angle:{detection['realsense_goal_angle']:+.1f}deg",
+                f"goal_center_dx_px:{detection['goal_center_dx_px']:+.1f}",
+                f"goal_center_dy_px:{detection['goal_center_dy_px']:.1f}",
             ]
         else:
             panel_lines = [
                 "HOOP:MISS",
-                "dist:N/A ang:N/A",
-                "yaw:N/A score:N/A",
-                f"proc:{process_ms:.1f}ms",
+                "realsense_goal_distance_cm:N/A",
+                "realsense_goal_angle:N/A",
+                "goal_center_dx_px:N/A",
+                "goal_center_dy_px:N/A",
             ]
 
         # 라인/공 화면과 같은 형태로 정보를 왼쪽 위의 작은 패널에 모은다.
@@ -988,7 +1148,7 @@ class HoopVisionNode(Node):
             debug,
             (panel_x, panel_y),
             (panel_right, panel_bottom),
-            (0, 255, 0),
+            pastel_yellow,
             1,
         )
 
@@ -1001,7 +1161,7 @@ class HoopVisionNode(Node):
                 (text_x, first_baseline_y + index * line_height),
                 font,
                 font_scale,
-                (255, 255, 255),
+                pastel_yellow,
                 font_thickness,
                 cv2.LINE_AA,
             )
