@@ -33,15 +33,18 @@ import json
 import math
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any, Deque, Dict, Optional, Tuple
 
 import cv2
 import numpy as np
 import rclpy
+import yaml
 from cv_bridge import CvBridge
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rcl_interfaces.msg import SetParametersResult
 from rclpy.node import Node
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Bool, String
 
@@ -49,6 +52,25 @@ from std_msgs.msg import Bool, String
 class HoopVisionNode(Node):
     def __init__(self) -> None:
         super().__init__("hoop_vision")
+
+        source_config = (
+            Path(__file__).resolve().parent.parent / "config" / "hoop_hsv.yaml"
+        )
+        default_hsv_config = (
+            source_config
+            if source_config.exists()
+            else Path.home()
+            / "irc"
+            / "src"
+            / "vision"
+            / "config"
+            / "hoop_hsv.yaml"
+        )
+        self.declare_parameter("hsv_config_file", str(default_hsv_config))
+        self.hsv_config_path = Path(
+            str(self.get_parameter("hsv_config_file").value)
+        ).expanduser()
+        hsv_defaults = self._load_hsv_defaults(self.hsv_config_path)
 
         # =========================================================
         # ROS 토픽
@@ -64,8 +86,9 @@ class HoopVisionNode(Node):
         self.declare_parameter("detected_topic", "/hoop/detected")
         self.declare_parameter("debug_image_topic", "/hoop/debug_image")
 
-        # active 토픽이 아직 오지 않아도 단독 테스트할 수 있도록 기본 True.
-        self.declare_parameter("active_on_start", True)
+        # 통합 실행에서는 ball_vision_fusion이 현재 모드를 transient-local로
+        # 전달한다. 단독 hoop 테스트만 파라미터로 True를 지정한다.
+        self.declare_parameter("active_on_start", False)
 
         # =========================================================
         # ROI: 기본값은 카메라 화면 전체를 사용한다.
@@ -79,15 +102,15 @@ class HoopVisionNode(Node):
         # HSV 기준
         # OpenCV H 범위는 0~179이며 빨강이 0과 179 양 끝에 걸쳐 있다.
         # =========================================================
-        self.declare_parameter("red_h1_low", 0)
-        self.declare_parameter("red_h1_high", 10)
-        self.declare_parameter("red_h2_low", 160)
-        self.declare_parameter("red_h2_high", 179)
-        self.declare_parameter("red_s_low", 80)
-        self.declare_parameter("red_v_low", 60)
+        self.declare_parameter("red_h1_low", hsv_defaults["red_h1_low"])
+        self.declare_parameter("red_h1_high", hsv_defaults["red_h1_high"])
+        self.declare_parameter("red_h2_low", hsv_defaults["red_h2_low"])
+        self.declare_parameter("red_h2_high", hsv_defaults["red_h2_high"])
+        self.declare_parameter("red_s_low", hsv_defaults["red_s_low"])
+        self.declare_parameter("red_v_low", hsv_defaults["red_v_low"])
 
-        self.declare_parameter("white_s_high", 80)
-        self.declare_parameter("white_v_low", 80)
+        self.declare_parameter("white_s_high", hsv_defaults["white_s_high"])
+        self.declare_parameter("white_v_low", hsv_defaults["white_v_low"])
 
         # =========================================================
         # 후보 형상 및 색 비율 조건
@@ -102,6 +125,15 @@ class HoopVisionNode(Node):
 
         self.declare_parameter("red_ratio_min", 0.55)
         self.declare_parameter("white_inner_ratio_min", 0.50)
+
+        # 일부가 가려져 빨간 테두리가 끊겨도 작은 간격은 후보 생성 단계에서
+        # 다시 연결한다. 최종 색 비율은 연결 전 원본 마스크로 검사하므로,
+        # 이 값이 곧바로 빨간 픽셀 증거를 부풀리지는 않는다.
+        self.declare_parameter("occlusion_merge_gap_px", 41)
+        # 위/왼쪽/오른쪽 테두리 중 하나가 가려져도 나머지 두 구간과 전체
+        # 빨간 비율이 충분하면 백보드로 인정한다.
+        self.declare_parameter("min_visible_red_bands", 2)
+        self.declare_parameter("red_band_average_min", 0.40)
 
         # =========================================================
         # Depth 조건
@@ -191,6 +223,17 @@ class HoopVisionNode(Node):
         self.white_inner_ratio_min = float(
             self.get_parameter("white_inner_ratio_min").value
         )
+        self.occlusion_merge_gap_px = max(
+            0,
+            int(self.get_parameter("occlusion_merge_gap_px").value),
+        )
+        self.min_visible_red_bands = max(
+            1,
+            min(3, int(self.get_parameter("min_visible_red_bands").value)),
+        )
+        self.red_band_average_min = float(
+            self.get_parameter("red_band_average_min").value
+        )
 
         self.depth_scale = float(self.get_parameter("depth_scale").value)
         self.depth_min_m = float(self.get_parameter("depth_min_m").value)
@@ -241,18 +284,21 @@ class HoopVisionNode(Node):
         self.history: Deque[Dict[str, Any]] = deque(
             maxlen=self.smoothing_window
         )
+        self.image_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+        )
 
         # =========================================================
         # ROS I/O
         # =========================================================
-        self.color_sub = Subscriber(self, Image, self.color_topic)
-        self.depth_sub = Subscriber(self, Image, self.depth_topic)
-        self.sync = ApproximateTimeSynchronizer(
-            [self.color_sub, self.depth_sub],
-            queue_size=5,
-            slop=0.1,
-        )
-        self.sync.registerCallback(self.image_callback)
+        # RealSense 구독과 synchronizer는 프로세스 수명 동안 유지한다.
+        # 모드 전환 때 구독을 재생성하지 않아 다음 카메라 프레임부터
+        # 즉시 hoop 처리로 넘어갈 수 있게 한다.
+        self.color_sub = None
+        self.depth_sub = None
+        self.sync = None
 
         self.camera_info_sub = self.create_subscription(
             CameraInfo,
@@ -260,11 +306,16 @@ class HoopVisionNode(Node):
             self.camera_info_callback,
             10,
         )
+        active_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
         self.active_sub = self.create_subscription(
             Bool,
             self.active_topic,
             self.active_callback,
-            10,
+            active_qos,
         )
 
         self.state_pub = self.create_publisher(String, self.state_topic, 10)
@@ -272,13 +323,59 @@ class HoopVisionNode(Node):
             Bool, self.detected_topic, 10
         )
         self.debug_pub = self.create_publisher(
-            Image, self.debug_image_topic, 10
+            Image, self.debug_image_topic, self.image_qos
         )
+
+        self._start_image_subscriptions()
 
         self.get_logger().info("HoopVisionNode started.")
         self.get_logger().info(f"Color topic: {self.color_topic}")
         self.get_logger().info(f"Aligned depth topic: {self.depth_topic}")
         self.get_logger().info(f"State output: {self.state_topic}")
+
+    def _load_hsv_defaults(self, path: Path) -> Dict[str, int]:
+        fallback = {
+            "red_h1_low": 0,
+            "red_h1_high": 10,
+            "red_h2_low": 160,
+            "red_h2_high": 179,
+            "red_s_low": 80,
+            "red_v_low": 60,
+            "white_s_high": 80,
+            "white_v_low": 80,
+        }
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                payload = yaml.safe_load(file) or {}
+            loaded = payload.get("hoop_vision", {}).get("ros__parameters", {})
+            values = {
+                name: int(loaded.get(name, default))
+                for name, default in fallback.items()
+            }
+            if not (
+                0 <= values["red_h1_low"] <= values["red_h1_high"] <= 179
+                and 0 <= values["red_h2_low"] <= values["red_h2_high"] <= 179
+                and 0 <= values["red_s_low"] <= 255
+                and 0 <= values["red_v_low"] <= 255
+                and 0 <= values["white_s_high"] <= 255
+                and 0 <= values["white_v_low"] <= 255
+            ):
+                raise ValueError("HSV value outside the OpenCV range")
+            self.get_logger().info(
+                "Loaded hoop red/white calibration from "
+                f"{path}: red H={values['red_h1_low']}.."
+                f"{values['red_h1_high']} + {values['red_h2_low']}.."
+                f"{values['red_h2_high']}, S>={values['red_s_low']}, "
+                f"V>={values['red_v_low']}; white "
+                f"S<={values['white_s_high']}, V>={values['white_v_low']}"
+            )
+            return values
+        except (OSError, TypeError, ValueError, yaml.YAMLError) as exc:
+            self.get_logger().warning(
+                f"Could not load hoop HSV calibration {path}: {exc}; "
+                "using built-in defaults"
+            )
+            return fallback
 
     # =============================================================
     # 파라미터
@@ -305,6 +402,8 @@ class HoopVisionNode(Node):
             "min_valid_depth_pixels",
             "center_depth_patch_radius",
             "min_valid_center_depth_pixels",
+            "occlusion_merge_gap_px",
+            "min_visible_red_bands",
             "smoothing_window",
             "print_every_n_frames",
         }
@@ -320,6 +419,7 @@ class HoopVisionNode(Node):
             "side_band_ratio",
             "side_vertical_end_ratio",
             "red_ratio_min",
+            "red_band_average_min",
             "white_inner_ratio_min",
             "depth_scale",
             "depth_min_m",
@@ -377,6 +477,20 @@ class HoopVisionNode(Node):
             1,
             int(self.min_valid_center_depth_pixels),
         )
+        self.occlusion_merge_gap_px = max(
+            0,
+            int(self.occlusion_merge_gap_px),
+        )
+        self.min_visible_red_bands = max(
+            1,
+            min(3, int(self.min_visible_red_bands)),
+        )
+
+        if not (0.0 <= self.red_band_average_min <= 1.0):
+            return SetParametersResult(
+                successful=False,
+                reason="red_band_average_min must be between 0 and 1",
+            )
 
         # smoothing_window 변경 시 deque 크기도 갱신한다.
         new_window = max(1, int(self.smoothing_window))
@@ -390,8 +504,50 @@ class HoopVisionNode(Node):
     # =============================================================
     # ROS 콜백
     # =============================================================
+    def _start_image_subscriptions(self) -> None:
+        if self.color_sub is not None or self.depth_sub is not None:
+            return
+
+        self.color_sub = Subscriber(
+            self,
+            Image,
+            self.color_topic,
+            qos_profile=self.image_qos,
+        )
+        self.depth_sub = Subscriber(
+            self,
+            Image,
+            self.depth_topic,
+            qos_profile=self.image_qos,
+        )
+        self.sync = ApproximateTimeSynchronizer(
+            [self.color_sub, self.depth_sub],
+            queue_size=2,
+            slop=0.1,
+        )
+        self.sync.registerCallback(self.image_callback)
+
     def active_callback(self, msg: Bool) -> None:
-        self.active = bool(msg.data)
+        requested = bool(msg.data)
+        if requested == self.active:
+            return
+
+        # 구독을 끊지 않고 처리 플래그만 바꾼다. 이 방식은 DDS discovery와
+        # synchronizer 재충전으로 생기던 전환 공백을 피한다.
+        self.active = requested
+        self.history.clear()
+        self.last_detection = None
+        self.last_detection_time = None
+        if not requested:
+            self._publish_state(
+                detection=None,
+                process_ms=0.0,
+                stamp_sec=time.monotonic(),
+            )
+
+        self.get_logger().info(
+            f"Hoop image processing switched {'ON' if requested else 'OFF'}"
+        )
 
     def camera_info_callback(self, msg: CameraInfo) -> None:
         if len(msg.k) < 9:
@@ -713,6 +869,57 @@ class HoopVisionNode(Node):
         y_m = (center_y - self.cy_intr) * depth_m / self.fy
         return math.sqrt(x_m * x_m + y_m * y_m + depth_m * depth_m)
 
+    @staticmethod
+    def _build_occlusion_tolerant_candidate_mask(
+        red_mask: np.ndarray,
+        merge_gap_px: int,
+    ) -> np.ndarray:
+        """가림으로 끊긴 수평/수직 테두리 조각을 후보 생성용으로 연결한다."""
+        gap = max(0, int(merge_gap_px))
+        if gap <= 1:
+            return red_mask.copy()
+        if gap % 2 == 0:
+            gap += 1
+
+        horizontal_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT,
+            (gap, 1),
+        )
+        vertical_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT,
+            (1, gap),
+        )
+        horizontal = cv2.morphologyEx(
+            red_mask,
+            cv2.MORPH_CLOSE,
+            horizontal_kernel,
+        )
+        vertical = cv2.morphologyEx(
+            red_mask,
+            cv2.MORPH_CLOSE,
+            vertical_kernel,
+        )
+        return cv2.bitwise_or(red_mask, cv2.bitwise_or(horizontal, vertical))
+
+    @staticmethod
+    def _red_band_evidence_passes(
+        band_ratios: Tuple[float, float, float],
+        red_ratio_min: float,
+        min_visible_red_bands: int,
+        red_band_average_min: float,
+    ) -> Tuple[bool, int, float]:
+        """부분 가림을 허용하면서 충분한 빨간 테두리 증거가 있는지 검사한다."""
+        visible_count = sum(
+            ratio >= red_ratio_min for ratio in band_ratios
+        )
+        average_ratio = float(sum(band_ratios)) / float(len(band_ratios))
+        required_count = max(1, min(len(band_ratios), min_visible_red_bands))
+        passed = (
+            visible_count >= required_count
+            and average_ratio >= red_band_average_min
+        )
+        return passed, visible_count, average_ratio
+
     def _find_best_hoop(
         self,
         red_mask: np.ndarray,
@@ -723,8 +930,12 @@ class HoopVisionNode(Node):
         frame_width: int,
         frame_height: int,
     ) -> Optional[Dict[str, Any]]:
+        candidate_mask = self._build_occlusion_tolerant_candidate_mask(
+            red_mask,
+            self.occlusion_merge_gap_px,
+        )
         contours, _ = cv2.findContours(
-            red_mask.copy(),
+            candidate_mask,
             cv2.RETR_EXTERNAL,
             cv2.CHAIN_APPROX_SIMPLE,
         )
@@ -831,12 +1042,19 @@ class HoopVisionNode(Node):
             right_red_ratio = self._masked_ratio(red_mask, right_mask)
             white_inner_ratio = self._masked_ratio(white_mask, inner_mask)
 
-            if (
-                top_red_ratio < self.red_ratio_min
-                or left_red_ratio < self.red_ratio_min
-                or right_red_ratio < self.red_ratio_min
-                or white_inner_ratio < self.white_inner_ratio_min
-            ):
+            red_bands_pass, visible_red_bands, red_band_ratio = (
+                self._red_band_evidence_passes(
+                    (
+                        top_red_ratio,
+                        left_red_ratio,
+                        right_red_ratio,
+                    ),
+                    self.red_ratio_min,
+                    self.min_visible_red_bands,
+                    self.red_band_average_min,
+                )
+            )
+            if not red_bands_pass or white_inner_ratio < self.white_inner_ratio_min:
                 continue
 
             inner_depth = roi_depth_m[inner_mask.astype(bool)]
@@ -885,9 +1103,6 @@ class HoopVisionNode(Node):
                 robot_y,
             )
 
-            red_band_ratio = (
-                top_red_ratio + left_red_ratio + right_red_ratio
-            ) / 3.0
             score = red_band_ratio + 0.5 * white_inner_ratio
 
             if score <= best_score:
@@ -916,6 +1131,8 @@ class HoopVisionNode(Node):
                 "right_red_ratio": right_red_ratio,
                 "white_inner_ratio": white_inner_ratio,
                 "red_band_ratio": red_band_ratio,
+                "visible_red_bands": visible_red_bands,
+                "occlusion_tolerant": visible_red_bands < 3,
                 "contour_area": contour_area,
                 "aspect_ratio": aspect_ratio,
                 "score": score,
@@ -982,6 +1199,8 @@ class HoopVisionNode(Node):
                 "right_red_ratio": None,
                 "white_inner_ratio": None,
                 "red_band_ratio": None,
+                "visible_red_bands": 0,
+                "occlusion_tolerant": False,
                 "score": None,
             }
         else:
@@ -1100,6 +1319,10 @@ class HoopVisionNode(Node):
                 f"realsense_goal_angle:{detection['realsense_goal_angle']:+.1f}deg",
                 f"goal_center_dx_px:{detection['goal_center_dx_px']:+.1f}",
                 f"goal_center_dy_px:{detection['goal_center_dy_px']:.1f}",
+                (
+                    "red_bands_visible:"
+                    f"{int(detection.get('visible_red_bands', 3))}/3"
+                ),
             ]
         else:
             panel_lines = [
@@ -1108,6 +1331,7 @@ class HoopVisionNode(Node):
                 "realsense_goal_angle:N/A",
                 "goal_center_dx_px:N/A",
                 "goal_center_dy_px:N/A",
+                "red_bands_visible:0/3",
             ]
 
         # 라인/공 화면과 같은 형태로 정보를 왼쪽 위의 작은 패널에 모은다.

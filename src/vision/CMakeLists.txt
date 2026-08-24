@@ -30,6 +30,18 @@ if(BUILD_TESTING)
     test_hoop_vision_geometry
     test/test_hoop_vision_geometry.py
   )
+  ament_add_pytest_test(
+    test_detector_activation
+    test/test_detector_activation.py
+  )
+  ament_add_pytest_test(
+    test_realsense_debug_selector
+    test/test_realsense_debug_selector.py
+  )
+  ament_add_pytest_test(
+    test_hoop_hsv_config
+    test/test_hoop_hsv_config.py
+  )
 endif()
 
 install(PROGRAMS

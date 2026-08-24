@@ -5,11 +5,11 @@ ROS 2 + RealSense HSV/Depth calibration tool.
 Purpose
 -------
 * Tune HSV and depth ranges at whatever venue/lighting is present now.
-* Keep one current profile for ball and one current profile for hoop.
+* Keep current profiles for ball, hoop red border, and hoop white interior.
 * Sample a dragged ROI over multiple frames and suggest robust HSV bounds.
 * Preview raw HSV mask, cleaned mask, depth mask, combined mask, and contours.
 * Save the current profile, screenshots, depth arrays, and CSV measurements.
-* Export the latest ball HSV as a ROS parameter file used by robot_bringup.
+* Export the latest ball and hoop HSV as production ROS parameter files.
 
 Mouse
 -----
@@ -18,7 +18,7 @@ Mouse
 
 Keys
 ----
-* b / k / f / g: select ball / black support / red floor / hoop
+* b / k / f / g / w: ball / black support / red floor / hoop red / hoop white
 * SPACE       : add current ROI samples to the selected target's sample bank
 * a           : auto-fit HSV bounds from sample bank (or current ROI)
 * d           : toggle detection preview using the fitted/current values
@@ -115,7 +115,7 @@ BALL_PREVIEW_EDGE_MAX_ASPECT = 2.20
 BALL_PREVIEW_MORPH_SIZE = 5
 BALL_PREVIEW_HOLD_FRAMES = 3
 
-TARGETS = ("ball", "support", "floor", "hoop")
+TARGETS = ("ball", "support", "floor", "hoop_red", "hoop_white")
 
 MAIN_WINDOW = "Calibration"
 MASK_WINDOW = "Masks"
@@ -261,11 +261,60 @@ def default_profile(target: str) -> Dict[str, Any]:
                 "v_high": 255,
             }
         )
-    elif target == "hoop":
-        common["min_area"] = 250
-        # The calibrator does not assume whether you detect rim or backboard.
-        # Shape validation should be specialized in the production detector.
+    elif target == "hoop_red":
+        common.update(
+            {
+                "h_low": 160,
+                "h_high": 10,
+                "s_low": 80,
+                "s_high": 255,
+                "v_low": 60,
+                "v_high": 255,
+                "min_area": 250,
+            }
+        )
+    elif target == "hoop_white":
+        # White hue is meaningless. Production uses only S high and V low.
+        common.update(
+            {
+                "h_low": 0,
+                "h_high": 179,
+                "s_low": 0,
+                "s_high": 80,
+                "v_low": 80,
+                "v_high": 255,
+                "min_area": 250,
+            }
+        )
     return common
+
+
+def hoop_ros_parameters(
+    red_profile: Dict[str, Any],
+    white_profile: Dict[str, Any],
+) -> Dict[str, int]:
+    """Convert circular red + white profiles to hoop_vision parameters."""
+    red_h_low = clamp_int(red_profile["h_low"], 0, 179)
+    red_h_high = clamp_int(red_profile["h_high"], 0, 179)
+    if red_h_low > red_h_high:
+        red_h1_low, red_h1_high = 0, red_h_high
+        red_h2_low, red_h2_high = red_h_low, 179
+    else:
+        # The detector accepts two ranges. Duplicating a non-wrapping range
+        # avoids opening an unrelated hue merely to fill the second interval.
+        red_h1_low, red_h1_high = red_h_low, red_h_high
+        red_h2_low, red_h2_high = red_h_low, red_h_high
+
+    return {
+        "red_h1_low": red_h1_low,
+        "red_h1_high": red_h1_high,
+        "red_h2_low": red_h2_low,
+        "red_h2_high": red_h2_high,
+        "red_s_low": clamp_int(red_profile["s_low"], 0, 255),
+        "red_v_low": clamp_int(red_profile["v_low"], 0, 255),
+        "white_s_high": clamp_int(white_profile["s_high"], 0, 255),
+        "white_v_low": clamp_int(white_profile["v_low"], 0, 255),
+    }
 
 
 def default_detector_settings() -> Dict[str, Any]:
@@ -286,7 +335,7 @@ def default_detector_settings() -> Dict[str, Any]:
 
 def default_store() -> Dict[str, Any]:
     return {
-        "version": 3,
+        "version": 4,
         "profiles": {
             target: default_profile(target)
             for target in TARGETS
@@ -294,7 +343,7 @@ def default_store() -> Dict[str, Any]:
         "detector": default_detector_settings(),
         "metadata": {
             "note": (
-                "Separate ball, black-support, floor and hoop profiles. "
+                "Separate ball, support, floor, hoop-red and hoop-white profiles. "
                 "Tune at the venue that is present now."
             ),
         },
@@ -335,12 +384,17 @@ class ProfileStore:
                 base.update(loaded)
             profiles[target] = base
 
+        # The old single hoop profile could mean either rim or backboard and
+        # was never connected to production. Keep it only in the automatic
+        # backup; new saves use explicit red/white targets.
+        profiles.pop("hoop", None)
+
         detector = default_detector_settings()
         loaded_detector = self.data.get("detector", {})
         if isinstance(loaded_detector, dict):
             detector.update(loaded_detector)
         self.data["detector"] = detector
-        self.data["version"] = 3
+        self.data["version"] = 4
         self.data.setdefault("metadata", {})
 
     def load(self) -> None:
@@ -413,6 +467,17 @@ class HSVCalibratorNode(Node):
             ),
         )
         self.declare_parameter(
+            "hoop_params_file",
+            str(
+                Path.home()
+                / "irc"
+                / "src"
+                / "vision"
+                / "config"
+                / "hoop_hsv.yaml"
+            ),
+        )
+        self.declare_parameter(
             "output_dir",
             str(Path.home() / ".ros" / "vision" / "calibration"),
         )
@@ -430,6 +495,9 @@ class HSVCalibratorNode(Node):
         ).expanduser()
         self.ball_params_path = Path(
             str(self.get_parameter("ball_params_file").value)
+        ).expanduser()
+        self.hoop_params_path = Path(
+            str(self.get_parameter("hoop_params_file").value)
         ).expanduser()
         self.output_dir = Path(
             str(self.get_parameter("output_dir").value)
@@ -527,7 +595,7 @@ class HSVCalibratorNode(Node):
             f"Calibration node ready | color={color_topic} | depth={depth_topic}"
         )
         self.get_logger().info(
-            "Keys: b/k/f/g target, SPACE add ROI, a auto-fit, d preview, "
+            "Keys: b/k/f/g/w target, SPACE add ROI, a auto-fit, d preview, "
             "r restore pre-fit, n new, x clear bank, s save, l load, "
             "i snapshot, q quit"
         )
@@ -956,6 +1024,22 @@ class HSVCalibratorNode(Node):
                 0,
                 255,
             )
+        elif key == "hoop_white":
+            # Hue carries no useful information for white. Fit the maximum
+            # saturation and minimum brightness used by production.
+            h_low, h_high = 0, 179
+            s_low = 0
+            s_high = clamp_int(
+                np.percentile(s, SV_HIGH_PERCENTILE) + S_HIGH_MARGIN,
+                0,
+                255,
+            )
+            v_low = clamp_int(
+                np.percentile(v, SV_LOW_PERCENTILE) - V_LOW_MARGIN,
+                0,
+                255,
+            )
+            v_high = 255
         else:
             hue_valid = h[(s > 10) & (v > 10)]
             if hue_valid.size < 20:
@@ -981,7 +1065,7 @@ class HSVCalibratorNode(Node):
             # just because it exceeds the sampled V maximum.
             v_high = (
                 255
-                if key == "ball"
+                if key in {"ball", "hoop_red"}
                 else clamp_int(
                     np.percentile(v, SV_HIGH_PERCENTILE) + V_HIGH_MARGIN,
                     0,
@@ -1005,6 +1089,11 @@ class HSVCalibratorNode(Node):
             self.get_logger().info(
                 f"Auto-fit support: black V <= {v_high} "
                 f"(p{SUPPORT_V_PERCENTILE:.0f} + {SUPPORT_V_MARGIN})"
+            )
+        elif key == "hoop_white":
+            self.get_logger().info(
+                "Auto-fit hoop_white: "
+                f"H ignored, S<= {s_high}, V>= {v_low}"
             )
         else:
             wrap_text = " (wraps through 0)" if h_low > h_high else ""
@@ -1760,7 +1849,7 @@ class HSVCalibratorNode(Node):
         note_y = start_y + len(rows) * line_h + 10
         cv2.putText(
             panel,
-            "Targets: B ball | K black support | F red floor | G hoop",
+            "Targets: B ball | K support | F floor | G hoop red | W hoop white",
             (18, note_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.43,
@@ -1869,7 +1958,7 @@ class HSVCalibratorNode(Node):
                 f"dark {metrics['underexposed_pct']:.1f}%  "
                 f"clip {metrics['overexposed_pct']:.1f}%"
             ),
-            "B ball | K support | F floor | G hoop",
+            "B ball | K support | F floor | G hoop red | W hoop white",
             "SPACE sample | A fit | D preview | R restore | S save",
         ]
         self._draw_text_panel(
@@ -1997,6 +2086,7 @@ class HSVCalibratorNode(Node):
             self.store.save()
             self.get_logger().info(f"Saved profiles -> {self.profile_path}")
             self._save_ball_ros_params()
+            self._save_hoop_ros_params()
         except OSError as exc:
             self.get_logger().error(f"Could not save profiles: {exc}")
 
@@ -2087,6 +2177,35 @@ class HSVCalibratorNode(Node):
         self.get_logger().info(
             "Exported ball/support/floor detector calibration -> "
             f"{self.ball_params_path}"
+        )
+
+    def _save_hoop_ros_params(self) -> None:
+        """Export calibrated red-border and white-interior HSV values."""
+        values = hoop_ros_parameters(
+            self.store.get("hoop_red"),
+            self.store.get("hoop_white"),
+        )
+        payload = {
+            "hoop_vision": {
+                "ros__parameters": values,
+            }
+        }
+        self.hoop_params_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = self.hoop_params_path.with_suffix(
+            self.hoop_params_path.suffix + ".tmp"
+        )
+        with temp_path.open("w", encoding="utf-8") as file:
+            yaml.safe_dump(
+                payload,
+                file,
+                sort_keys=False,
+                allow_unicode=True,
+                default_flow_style=False,
+            )
+        temp_path.replace(self.hoop_params_path)
+        self.get_logger().info(
+            "Exported hoop red/white detector calibration -> "
+            f"{self.hoop_params_path}"
         )
 
     def _reload_profiles(self) -> None:
@@ -2277,7 +2396,9 @@ class HSVCalibratorNode(Node):
         elif key == ord("f"):
             self._switch_target("floor")
         elif key == ord("g"):
-            self._switch_target("hoop")
+            self._switch_target("hoop_red")
+        elif key == ord("w"):
+            self._switch_target("hoop_white")
         elif key == ord("h"):
             self.get_logger().warning(
                 "IRC hurdle detection currently uses webcam YOLO, not "

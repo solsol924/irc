@@ -22,6 +22,43 @@ from realsense_debug_selector import RealSenseDebugSelector  # noqa: E402
 
 
 class HoopGeometryTest(unittest.TestCase):
+    @staticmethod
+    def _detector_harness() -> HoopVisionNode:
+        node = HoopVisionNode.__new__(HoopVisionNode)
+        node.min_contour_area = 200.0
+        node.min_backboard_aspect_ratio = 1.05
+        node.max_backboard_aspect_ratio = 6.0
+        node.top_band_ratio = 0.15
+        node.side_band_ratio = 0.10
+        node.side_vertical_end_ratio = 0.75
+        node.red_ratio_min = 0.55
+        node.white_inner_ratio_min = 0.50
+        node.occlusion_merge_gap_px = 41
+        node.min_visible_red_bands = 2
+        node.red_band_average_min = 0.40
+        node.depth_min_m = 0.08
+        node.depth_max_m = 2.0
+        node.min_valid_depth_pixels = 20
+        node.center_depth_patch_radius = 5
+        node.min_valid_center_depth_pixels = 5
+        node.fx = 607.0
+        node.fy = 606.0
+        node.cx_intr = 160.0
+        node.cy_intr = 120.0
+        return node
+
+    @staticmethod
+    def _synthetic_backboard_masks():
+        red = np.zeros((240, 320), dtype=np.uint8)
+        white = np.zeros_like(red)
+        depth = np.ones(red.shape, dtype=np.float32)
+
+        red[40:59, 60:261] = 255
+        red[40:156, 60:79] = 255
+        red[40:156, 242:261] = 255
+        white[59:128, 79:242] = 255
+        return red, white, depth
+
     def test_robot_reference_is_exact_screen_bottom_center(self) -> None:
         point = HoopVisionNode._robot_reference_point(
             frame_width=640,
@@ -136,6 +173,82 @@ class HoopGeometryTest(unittest.TestCase):
 
         self.assertAlmostEqual(result, math.sqrt(4.04), places=6)
 
+    def test_red_band_evidence_allows_one_partially_occluded_band(self) -> None:
+        passed, visible_count, average = (
+            HoopVisionNode._red_band_evidence_passes(
+                (0.82, 0.18, 0.76),
+                red_ratio_min=0.55,
+                min_visible_red_bands=2,
+                red_band_average_min=0.40,
+            )
+        )
+
+        self.assertTrue(passed)
+        self.assertEqual(visible_count, 2)
+        self.assertAlmostEqual(average, (0.82 + 0.18 + 0.76) / 3.0)
+
+    def test_red_band_evidence_rejects_only_one_visible_band(self) -> None:
+        passed, visible_count, _ = HoopVisionNode._red_band_evidence_passes(
+            (0.80, 0.10, 0.12),
+            red_ratio_min=0.55,
+            min_visible_red_bands=2,
+            red_band_average_min=0.40,
+        )
+
+        self.assertFalse(passed)
+        self.assertEqual(visible_count, 1)
+
+    def test_detects_backboard_when_top_border_is_split_by_occlusion(self) -> None:
+        node = self._detector_harness()
+        red, white, depth = self._synthetic_backboard_masks()
+        red[36:65, 143:178] = 0
+
+        node.occlusion_merge_gap_px = 0
+        without_fragment_merge = node._find_best_hoop(
+            red_mask=red,
+            white_mask=white,
+            roi_depth_m=depth,
+            roi_x_start=0,
+            roi_y_start=0,
+            frame_width=320,
+            frame_height=240,
+        )
+        self.assertIsNone(without_fragment_merge)
+
+        node.occlusion_merge_gap_px = 41
+        detection = node._find_best_hoop(
+            red_mask=red,
+            white_mask=white,
+            roi_depth_m=depth,
+            roi_x_start=0,
+            roi_y_start=0,
+            frame_width=320,
+            frame_height=240,
+        )
+
+        self.assertIsNotNone(detection)
+        self.assertTrue(detection["detected"])
+        self.assertGreaterEqual(detection["visible_red_bands"], 2)
+
+    def test_detects_backboard_when_one_side_is_mostly_occluded(self) -> None:
+        node = self._detector_harness()
+        red, white, depth = self._synthetic_backboard_masks()
+        red[64:126, 56:83] = 0
+
+        detection = node._find_best_hoop(
+            red_mask=red,
+            white_mask=white,
+            roi_depth_m=depth,
+            roi_x_start=0,
+            roi_y_start=0,
+            frame_width=320,
+            frame_height=240,
+        )
+
+        self.assertIsNotNone(detection)
+        self.assertEqual(detection["visible_red_bands"], 2)
+        self.assertTrue(detection["occlusion_tolerant"])
+
 
 class HoopIntegrationTest(unittest.TestCase):
     def test_valid_hoop_state_is_kept_for_ball_result(self) -> None:
@@ -164,7 +277,7 @@ class HoopIntegrationTest(unittest.TestCase):
         self.assertEqual(harness.latest_hoop["realsense_goal_angle"], -8.5)
         self.assertGreater(harness.latest_hoop_time, 0.0)
 
-    def test_hoop_debug_image_has_priority_while_hoop_is_detected(self) -> None:
+    def test_hoop_debug_image_has_priority_while_hoop_mode_is_active(self) -> None:
         now = time.monotonic()
         harness = SimpleNamespace(
             ball_detected=True,
@@ -174,6 +287,9 @@ class HoopIntegrationTest(unittest.TestCase):
             hurdle_state_time=now,
             hoop_state_time=now,
             state_timeout_sec=0.5,
+            selected_source="hoop",
+            ball_enabled=False,
+            hoop_enabled=True,
         )
 
         source = RealSenseDebugSelector._active_source(harness)

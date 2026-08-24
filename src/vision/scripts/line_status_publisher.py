@@ -16,6 +16,8 @@ class LineStatus:
     Backward_half = 9
     Left_Move = 10
     Right_Move = 11
+    Left_Turn_Curve = 21
+    Right_Turn_Curve = 22
     Line_Lost = 99
 
 @dataclass
@@ -53,14 +55,15 @@ class LineFeatures:
 class LineDecision:
     def __init__(self):
         #직진, 미세회전, 회전 각도 기준 설정
-        self.forward_angle = 15.0
-        self.turn_angle = 38.0
+        self.forward_angle = 7.0
+        self.turn_angle = 22.5
 
         # x = a*y^2 + b*y + c 픽셀 좌표 피팅 기준
         self.curve_a = 1e-4
 
         #거리기준 - 픽셀 단위로 맞춰서 수정하기
-        self.move_distance = 130.0
+        self.move_distance = 90.0
+        self.curve_distance = 100.0
 
 
     def decide(self, features: LineFeatures) -> Tuple[int, float]:
@@ -71,24 +74,42 @@ class LineDecision:
         if features.point_count <= 2:
             return self._status_from_follow_angle(features.follow_angle)
 
-        # 점 3개는 일반 직선 상황으로 line_angle을 기준으로 판단한다.
+        # 점 3개는 일반 직선 상황이다.
+        # 라인이 중심선에서 멀면 각도보다 거리 보정을 우선한다.
         if features.point_count == 3:
+            distance = features.line_distance
+            if (
+                distance is not None
+                and abs(distance) >= self.move_distance
+            ):
+                if distance < 0:
+                    return LineStatus.Left_Half_Forward, 0.0
+                return LineStatus.Right_Half_Forward, 0.0
             return self._status_from_line_angle(features.line_angle)
 
-        # 점 4개 이상은 곡선 상황이다.
-        # 라인이 중심선으로부터 130px 이상 벗어나면
-        # 각도보다 거리 보정을 우선하여 라인이 있는 방향으로 미세회전한다.
+        # 점 4개 이상은 먼저 이차함수의 a값으로 직선과 곡선을 구분한다.
+        # 곡선은 curve_distance, 직선은 move_distance를 거리 기준으로 사용한다.
+        curve_a = features.curve_a
+        is_curve = curve_a is not None and abs(curve_a) > self.curve_a
+        distance_limit = (
+            self.curve_distance if is_curve else self.move_distance
+        )
+
         distance = features.line_distance
         if (
             distance is not None
-            and abs(distance) >= self.move_distance
+            and abs(distance) >= distance_limit
         ):
             if distance < 0:
                 return LineStatus.Left_Half_Forward, 0.0
             return LineStatus.Right_Half_Forward, 0.0
 
-        # 중심선과 가까우면 곡선의 접선 각도를 기준으로 판단한다.
-        return self._status_from_line_angle(features.tangent_angle)
+        # 거리 보정이 필요하지 않은 곡선은 접선 각도로 판단한다.
+        if is_curve:
+            return self._status_from_curve_angle(features.tangent_angle)
+
+        # 중심선과 가까우면 직선 각도를 기준으로 판단한다.
+        return self._status_from_line_angle(features.line_angle)
 
     def _status_from_follow_angle(self, angle: Optional[float]) -> Tuple[int, float]:
         if angle is None:
@@ -101,28 +122,53 @@ class LineDecision:
 
         return LineStatus.Forward_4step, 0.0
 
+    #직선구간에서 판단기준
     def _status_from_line_angle(self, angle: Optional[float]) -> Tuple[int, float]:
         if angle is None:
             return LineStatus.Line_Lost, 0.0
 
         abs_angle = abs(angle)
 
-        # 15도 이하: 직진
+        # 8도 이하: 직진
         if abs_angle <= self.forward_angle:
             return LineStatus.Forward_4step, 0.0
 
-        # 15~38도: 미세회전
+        # 8~20도: 미세회전
         if abs_angle <= self.turn_angle:
             if angle < 0:
                 return LineStatus.Left_Half_Forward, abs_angle
             else:
                 return LineStatus.Right_Half_Forward, abs_angle
 
-        # 38도 초과: 회전
+        # 20도 초과: 회전
         if angle < 0:
             return LineStatus.Left_Turn, abs_angle
         else:
             return LineStatus.Right_Turn, abs_angle
+
+    #곡선구간에서 판단 기준
+    def _status_from_curve_angle(self, angle: Optional[float]) -> Tuple[int, float]:
+            if angle is None:
+                return LineStatus.Line_Lost, 0.0
+
+            abs_angle = abs(angle)
+
+            # 15도 이하: 직진
+            if abs_angle <= self.forward_angle:
+                return LineStatus.Forward_4step, 0.0
+
+            # 15~25도: 미세회전
+            if abs_angle <= self.turn_angle:
+                if angle < 0:
+                    return LineStatus.Left_Half_Forward, abs_angle
+                else:
+                    return LineStatus.Right_Half_Forward, abs_angle
+
+            # 25도 초과: curve 회전
+            if angle < 0:
+                return LineStatus.Left_Turn_Curve, abs_angle
+            else:
+                return LineStatus.Right_Turn_Curve, abs_angle
 
 
 class LineStatusPublisher:
