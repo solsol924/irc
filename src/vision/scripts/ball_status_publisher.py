@@ -314,7 +314,7 @@ class BallStatusPublisher:
 
         if command == BallStatus.Pick_Ready:
             self.pick_command_seen = True
-            self.ball_in_hand = True  # TEST ONLY
+            self.ball_in_hand = True  # 테스트 전용
             return
 
         # MainDecision은 Pick 모션이 끝난 뒤 CheckBall()을 실행한

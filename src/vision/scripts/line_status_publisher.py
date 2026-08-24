@@ -177,7 +177,7 @@ class LineStatusPublisher:
         self.line_decision = LineDecision()
         self.line_pub = self.node.create_publisher(LineResult, topic_name, 10)
 
-    #라인 상태를 판단하고 Publish하는 함수
+    # 라인 상태를 판단하고 발행하는 함수
     def publish_line_status(
         self,
         point_count: int,
@@ -193,7 +193,7 @@ class LineStatusPublisher:
         follow_distance: Optional[float] = None,
     ) -> Tuple[int, float]:
 
-        #LineFeatures 객체 생성
+        # LineFeatures 객체 생성
         features = LineFeatures(
             point_count=point_count,
             line_angle=line_angle,
@@ -208,10 +208,10 @@ class LineStatusPublisher:
             follow_distance=follow_distance,
         )
 
-        #라인 상태를 판단
+        # 라인 상태 판단
         status, angle = self.line_decision.decide(features)
 
-        #라인 상태를 Publish
+        # 라인 상태 발행
         msg = LineResult()
         msg.status = int(status)
         msg.angle = float(angle)

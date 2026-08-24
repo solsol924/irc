@@ -193,6 +193,7 @@ def generate_launch_description() -> LaunchDescription:
         additional_env={"PYTHONUNBUFFERED": "1"},
     )
 
+    # 시작할 때는 공 검출만 동작하고, 공 소유가 확인되면 hoop 검출로 전환한다.
     hoop_process = ExecuteProcess(
         name="hoop_vision_process",
         cmd=[
@@ -203,6 +204,8 @@ def generate_launch_description() -> LaunchDescription:
             "show_window:=false",
             "-p",
             "publish_debug_image:=true",
+            "-p",
+            "active_on_start:=false",
         ],
         cwd=scripts_dir,
         output="screen",

@@ -1,47 +1,47 @@
 #!/usr/bin/env python3
 """
-ROS 2 + RealSense HSV/Depth calibration tool.
+ROS 2 + RealSense HSV/Depth 보정 도구.
 
-Purpose
--------
-* Tune HSV and depth ranges at whatever venue/lighting is present now.
-* Keep current profiles for ball, hoop red border, and hoop white interior.
-* Sample a dragged ROI over multiple frames and suggest robust HSV bounds.
-* Preview raw HSV mask, cleaned mask, depth mask, combined mask, and contours.
-* Save the current profile, screenshots, depth arrays, and CSV measurements.
-* Export the latest ball and hoop HSV as production ROS parameter files.
-
-Mouse
------
-* Left-drag on the "Calibration" window: select a tight object ROI.
-* Right-click: clear ROI.
-
-Keys
+목적
 ----
-* b / k / f / g / w: ball / black support / red floor / hoop red / hoop white
-* SPACE       : add current ROI samples to the selected target's sample bank
-* a           : auto-fit HSV bounds from sample bank (or current ROI)
-* d           : toggle detection preview using the fitted/current values
-* r           : restore the values that were active before the first auto-fit
-* n           : start a new tuning session for the current target
-                (clears ROI and accumulated samples; keeps slider values)
-* x           : clear only the selected target's sample bank
-* s           : save the current ball/hoop profiles to YAML
-* l           : reload profiles from YAML
-* i           : save image/depth snapshot and append a CSV row
-* q / ESC     : quit
+* 현재 경기장과 조명에 맞춰 HSV 및 깊이 범위를 조정한다.
+* 공, hoop 빨간 테두리, hoop 흰 내부의 최신 프로필을 각각 관리한다.
+* 여러 프레임에서 선택한 ROI 표본으로 안정적인 HSV 범위를 계산한다.
+* 원본·정리 HSV 마스크, 깊이 마스크, 결합 마스크와 후보를 미리 본다.
+* 현재 프로필, 화면, 깊이 배열과 CSV 측정값을 저장한다.
+* 최신 공·hoop HSV를 실제 검출기가 읽는 ROS 파라미터 파일로 내보낸다.
 
-Notes
------
-* There are no fixed bright/normal/dark modes. Run this tool at the current
-  venue, collect ROI samples, press A to fit, inspect the masks, then press S.
-* HSV H is OpenCV's 0..179 range. If H low > H high, the range wraps through 0
-  (useful for red hues near both 179 and 0).
-* depth_scale_to_mm multiplies raw depth values before comparison. RealSense ROS
-  commonly publishes 16UC1 depth in millimetres, so the default is 1.0. Verify
-  your topic encoding and change this parameter when necessary.
-* environment_label is optional and is used only in saved records. It does not
-  select or alter HSV values. Example: -p environment_label:=gym_A
+마우스
+------
+* "Calibration" 창에서 왼쪽 드래그: 대상에 맞춘 ROI를 선택한다.
+* 오른쪽 클릭: ROI를 지운다.
+
+키
+--
+* b / k / f / g / w: 공 / 검은 받침대 / 빨간 바닥 / hoop 빨강 / hoop 흰색
+* SPACE       : 현재 ROI 표본을 선택 대상의 표본 모음에 추가한다.
+* a           : 표본 모음 또는 현재 ROI로 HSV 범위를 자동 계산한다.
+* d           : 계산된 현재 값으로 검출 미리보기를 켜거나 끈다.
+* r           : 첫 자동 계산 전 값을 복원한다.
+* n           : 현재 대상의 새 보정 작업을 시작한다.
+                (ROI와 표본은 지우고 슬라이더 값은 유지한다.)
+* x           : 현재 대상의 표본 모음만 지운다.
+* s           : 현재 공·hoop 프로필을 YAML로 저장한다.
+* l           : YAML 프로필을 다시 읽는다.
+* i           : 컬러·깊이 화면을 저장하고 CSV 행을 추가한다.
+* q / ESC     : 종료한다.
+
+참고
+----
+* 밝음·보통·어두움 같은 고정 모드는 없다. 현재 경기장에서 ROI 표본을
+  모으고 A로 계산한 뒤 마스크를 확인하고 S로 저장한다.
+* HSV H는 OpenCV 기준 0~179이다. H low가 H high보다 크면 0을 통과하는
+  순환 구간이며, 179와 0 양쪽에 걸친 빨간색에 유용하다.
+* depth_scale_to_mm은 비교 전에 원본 깊이값에 곱한다. RealSense ROS는
+  일반적으로 16UC1 깊이를 mm로 발행하므로 기본값은 1.0이다. 토픽
+  인코딩을 확인하고 필요할 때 변경한다.
+* environment_label은 선택 사항이며 저장 기록에만 사용한다. HSV 값을
+  선택하거나 바꾸지 않는다. 예: -p environment_label:=gym_A
 
 """
 
@@ -73,11 +73,11 @@ from ball_detector_core import (
 
 
 # -----------------------------------------------------------------------------
-# Easy-to-edit calibration heuristics
+# 쉽게 조정할 수 있는 보정 기준
 # -----------------------------------------------------------------------------
-HUE_COVERAGE = 0.97       # shortest hue arc covering 97% of sampled hue pixels
-HUE_MARGIN = 4            # expand the fitted hue arc by this many OpenCV H units
-SV_LOW_PERCENTILE = 2.0   # ignore extreme dark/desaturated outlier pixels
+HUE_COVERAGE = 0.97       # 표본 Hue 픽셀의 97%를 포함하는 최단 구간
+HUE_MARGIN = 4            # 계산한 Hue 구간 양쪽에 더할 OpenCV H 여유값
+SV_LOW_PERCENTILE = 2.0   # 지나치게 어둡거나 저채도인 이상치를 제외한다.
 SV_HIGH_PERCENTILE = 99.0
 S_LOW_MARGIN = 15
 S_HIGH_MARGIN = 5
@@ -90,10 +90,9 @@ MAX_ROI_PIXELS_PER_ADD = 20_000
 UNDEREXPOSED_V = 25
 OVEREXPOSED_V = 245
 
-# Keep these ball-preview checks aligned with irc/src/vision/scripts/
-# ball_vision_fusion.py.  They intentionally do not use the looser calibrator
-# contour sliders, so D mode answers whether the fitted HSV is likely to pass
-# the current competition ball detector rather than only its color mask.
+# 이 공 미리보기 조건은 scripts/ball_vision_fusion.py와 동일하게 유지한다.
+# 일부러 느슨한 보정기 윤곽선 슬라이더를 사용하지 않으므로 D 모드에서는
+# 색상 마스크뿐 아니라 실제 경기용 공 검출 조건을 통과할지도 확인할 수 있다.
 BALL_PREVIEW_DEPTH_MAX_MM = 1_500.0
 BALL_PREVIEW_MIN_AREA = 300.0
 BALL_PREVIEW_MAX_CIRCLE_RATIO_ERROR = 0.45
@@ -138,7 +137,7 @@ TRACKBARS = {
 
 
 def noop(_: int) -> None:
-    """Provide a trackbar callback placeholder."""
+    """트랙바에 필요한 빈 콜백을 제공한다."""
 
 
 def clamp_int(value: float, low: int, high: int) -> int:
@@ -146,7 +145,7 @@ def clamp_int(value: float, low: int, high: int) -> int:
 
 
 def odd_kernel(value: int, allow_zero: bool = False) -> int:
-    """Return a valid odd OpenCV kernel size."""
+    """OpenCV에서 사용할 수 있는 홀수 커널 크기를 반환한다."""
     value = int(value)
     if allow_zero and value <= 0:
         return 0
@@ -160,9 +159,9 @@ def shortest_hue_interval(
     margin: int = HUE_MARGIN,
 ) -> Tuple[int, int]:
     """
-    Find the shortest circular interval on OpenCV hue space [0, 179].
+    OpenCV Hue 공간 0~179에서 가장 짧은 순환 구간을 찾는다.
 
-    A returned low > high means the interval wraps through hue 0.
+    반환된 low가 high보다 크면 Hue 0을 통과하는 구간이다.
     """
     values = np.asarray(hues, dtype=np.int16).reshape(-1)
     values = values[(values >= 0) & (values <= 179)]
@@ -188,7 +187,7 @@ def shortest_hue_interval(
 
 
 def hue_mask(hsv: np.ndarray, profile: Dict[str, Any]) -> np.ndarray:
-    """Create an HSV mask with support for hue wrap-around."""
+    """Hue가 0을 통과하는 순환 구간도 지원하는 HSV 마스크를 만든다."""
     h_low = clamp_int(profile["h_low"], 0, 179)
     h_high = clamp_int(profile["h_high"], 0, 179)
     s_low = clamp_int(profile["s_low"], 0, 255)
@@ -208,7 +207,7 @@ def hue_mask(hsv: np.ndarray, profile: Dict[str, Any]) -> np.ndarray:
             np.array([h_high, s_high, v_high], dtype=np.uint8),
         )
 
-    # Wrapped interval, e.g. H=170..10 for red.
+    # 빨간색 H=170..10처럼 0을 통과하는 순환 구간이다.
     lower_part = cv2.inRange(
         hsv,
         np.array([0, s_low, v_low], dtype=np.uint8),
@@ -223,7 +222,7 @@ def hue_mask(hsv: np.ndarray, profile: Dict[str, Any]) -> np.ndarray:
 
 
 def default_profile(target: str) -> Dict[str, Any]:
-    """Return a placeholder profile to be replaced by calibration data."""
+    """실제 보정값으로 교체할 대상별 초기 프로필을 반환한다."""
     common: Dict[str, Any] = {
         "h_low": 8,
         "h_high": 60,
@@ -239,7 +238,7 @@ def default_profile(target: str) -> Dict[str, Any]:
         "ball_circularity_min": 0.45,
     }
     if target == "support":
-        # Black hue is unstable; production uses the fitted V high only.
+        # 검은색 Hue는 불안정하므로 실제 검출에서는 계산한 V 상한만 쓴다.
         common.update(
             {
                 "h_low": 0,
@@ -274,7 +273,7 @@ def default_profile(target: str) -> Dict[str, Any]:
             }
         )
     elif target == "hoop_white":
-        # White hue is meaningless. Production uses only S high and V low.
+        # 흰색은 Hue가 의미 없으므로 실제 검출에서는 S 상한과 V 하한만 쓴다.
         common.update(
             {
                 "h_low": 0,
@@ -293,15 +292,15 @@ def hoop_ros_parameters(
     red_profile: Dict[str, Any],
     white_profile: Dict[str, Any],
 ) -> Dict[str, int]:
-    """Convert circular red + white profiles to hoop_vision parameters."""
+    """순환 빨강·흰색 프로필을 hoop_vision 파라미터로 변환한다."""
     red_h_low = clamp_int(red_profile["h_low"], 0, 179)
     red_h_high = clamp_int(red_profile["h_high"], 0, 179)
     if red_h_low > red_h_high:
         red_h1_low, red_h1_high = 0, red_h_high
         red_h2_low, red_h2_high = red_h_low, 179
     else:
-        # The detector accepts two ranges. Duplicating a non-wrapping range
-        # avoids opening an unrelated hue merely to fill the second interval.
+        # 검출기는 Hue 구간 두 개를 받는다. 순환하지 않는 구간은 그대로
+        # 복제해 두 번째 구간 때문에 관계없는 색이 열리지 않게 한다.
         red_h1_low, red_h1_high = red_h_low, red_h_high
         red_h2_low, red_h2_high = red_h_low, red_h_high
 
@@ -318,7 +317,7 @@ def hoop_ros_parameters(
 
 
 def default_detector_settings() -> Dict[str, Any]:
-    """Support geometry and context thresholds shared with production."""
+    """실제 검출기와 공유하는 받침대 형상·주변 조건을 반환한다."""
     return {
         "support_diameter_m": 0.150,
         "support_black_ratio_min": 0.30,
@@ -343,8 +342,8 @@ def default_store() -> Dict[str, Any]:
         "detector": default_detector_settings(),
         "metadata": {
             "note": (
-                "Separate ball, support, floor, hoop-red and hoop-white profiles. "
-                "Tune at the venue that is present now."
+                "공, 받침대, 바닥, hoop 빨강과 hoop 흰색 프로필을 분리한다. "
+                "현재 경기장에서 보정한다."
             ),
         },
     }
@@ -357,12 +356,12 @@ class ProfileStore:
         self.load()
 
     def _ensure_structure(self) -> None:
-        """Normalize current and legacy YAML structures to one profile per target."""
+        """현재·이전 YAML 구조를 대상별 단일 프로필로 정규화한다."""
         profiles = self.data.setdefault("profiles", {})
         for target in TARGETS:
             loaded = profiles.get(target, {})
 
-            # Migration from the previous bright/normal/dark structure.
+            # 이전 bright/normal/dark 구조를 단일 프로필로 변환한다.
             if isinstance(loaded, dict) and any(
                 key in loaded for key in ("bright", "normal", "dark")
             ):
@@ -384,9 +383,9 @@ class ProfileStore:
                 base.update(loaded)
             profiles[target] = base
 
-        # The old single hoop profile could mean either rim or backboard and
-        # was never connected to production. Keep it only in the automatic
-        # backup; new saves use explicit red/white targets.
+        # 이전 단일 hoop 프로필은 테두리와 내부 중 무엇인지 구분할 수 없고
+        # 실제 검출에도 연결되지 않았다. 자동 백업에만 남기고 새 저장본은
+        # 빨강과 흰색 대상을 명확히 분리한다.
         profiles.pop("hoop", None)
 
         detector = default_detector_settings()
@@ -557,8 +556,8 @@ class HSVCalibratorNode(Node):
         self.sample_bank_stats: Dict[str, Dict[str, Any]] = {}
         self.sample_add_counts: Dict[str, int] = {}
 
-        # UI and reversible auto-fit state.  Nothing here changes IRC files or
-        # a running detector node; D mode is a local, read-only preview.
+        # UI와 되돌릴 수 있는 자동 계산 상태다. 여기서는 IRC 파일이나 실행 중인
+        # 검출 노드를 바꾸지 않으며 D 모드는 로컬 읽기 전용 미리보기다.
         self.view_mode = "calibration"
         self.context_panel_modes: Dict[str, str] = {
             target: "none" for target in TARGETS
@@ -567,8 +566,8 @@ class HSVCalibratorNode(Node):
         self.pre_fit_profiles: Dict[str, Dict[str, Any]] = {}
         self.session_profile_backup: Optional[Path] = None
 
-        # Camera intrinsics and short hold state mirror the production ball
-        # detector.  CameraInfo replaces these fallbacks as soon as it arrives.
+        # 카메라 내부 파라미터와 짧은 유지 상태는 실제 공 검출기와 동일하다.
+        # CameraInfo가 들어오면 즉시 아래 임시값을 교체한다.
         self.fx = 607.0
         self.fy = 606.0
         self.cx_intr = 325.5
@@ -586,9 +585,9 @@ class HSVCalibratorNode(Node):
         self._apply_profile_to_controls(self.store.get(self.target))
         self._show_waiting_ui()
 
-        # OpenCV window events must keep running even when the RealSense stops
-        # publishing frames.  Keeping waitKey() inside image_callback() made
-        # Ubuntu report "Unknown is not responding" during a UVC timeout.
+        # RealSense 프레임 발행이 멈춰도 OpenCV 창 이벤트는 계속 처리해야 한다.
+        # waitKey()를 image_callback() 안에 두면 UVC 시간 초과 때 Ubuntu가
+        # 창이 응답하지 않는다고 표시한다.
         self.gui_timer = self.create_timer(0.02, self._poll_gui)
 
         self.get_logger().info(
@@ -600,15 +599,14 @@ class HSVCalibratorNode(Node):
             "i snapshot, q quit"
         )
 
-    # ------------------------------------------------------------------ UI --
+    # ------------------------------------------------------------------ 화면 --
     def _setup_ui(self) -> None:
         cv2.namedWindow(MAIN_WINDOW, cv2.WINDOW_AUTOSIZE)
         cv2.namedWindow(MASK_WINDOW, cv2.WINDOW_NORMAL)
 
-        # Some Ubuntu/Qt themes render OpenCV trackbar labels as white text on
-        # a white background.  Use the normal GUI mode (without the image
-        # toolbar when supported) and draw our own readable guide above the
-        # sliders so the control order and current values are always visible.
+        # 일부 Ubuntu/Qt 테마에서는 OpenCV 트랙바 글자가 흰 배경에 흰색으로
+        # 표시된다. 일반 GUI 모드를 사용하고 슬라이더 위에 안내 화면을 직접
+        # 그려 조절 순서와 현재 값이 항상 보이게 한다.
         control_flags = cv2.WINDOW_NORMAL
         if hasattr(cv2, "WINDOW_GUI_NORMAL"):
             control_flags |= cv2.WINDOW_GUI_NORMAL
@@ -641,7 +639,7 @@ class HSVCalibratorNode(Node):
             )
 
     def _show_waiting_ui(self) -> None:
-        """Draw useful windows before the first synchronized camera frame."""
+        """첫 동기화 카메라 프레임 전에 대기 안내 화면을 표시한다."""
         waiting = np.zeros((480, 640, 3), dtype=np.uint8)
         cv2.putText(
             waiting,
@@ -671,7 +669,7 @@ class HSVCalibratorNode(Node):
         )
 
     def _poll_gui(self) -> None:
-        """Process OpenCV input independently of the camera callbacks."""
+        """카메라 콜백과 독립적으로 OpenCV 입력을 처리한다."""
         key = cv2.waitKey(1) & 0xFF
         self._handle_key(key)
 
@@ -805,7 +803,7 @@ class HSVCalibratorNode(Node):
         self._reset_preview_state()
         self.get_logger().info(f"Target -> {self.target}")
 
-    # --------------------------------------------------------------- Mouse --
+    # --------------------------------------------------------------- 마우스 --
     def _mouse_callback(
         self,
         event: int,
@@ -872,8 +870,8 @@ class HSVCalibratorNode(Node):
         height, width = roi_hsv.shape[:2]
         sample_mask = np.ones((height, width), dtype=bool)
 
-        # A rectangular ROI around a ball contains background at its corners.
-        # Use an inner ellipse for ball samples to reduce contamination.
+        # 공을 감싼 사각 ROI의 모서리에는 배경이 들어간다. 내부 타원 영역만
+        # 사용해 공 표본에 배경이 섞이는 양을 줄인다.
         if self.target == "ball" and width >= 6 and height >= 6:
             yy, xx = np.ogrid[:height, :width]
             cx = (width - 1) / 2.0
@@ -898,7 +896,7 @@ class HSVCalibratorNode(Node):
         self.current_roi_pixels = pixels.copy()
         self.last_roi_stats = self._describe_samples(pixels)
 
-    # ----------------------------------------------------------- Statistics --
+    # --------------------------------------------------------------- 통계 --
     def _describe_samples(self, pixels: np.ndarray) -> Dict[str, Any]:
         pixels = np.asarray(pixels).reshape(-1, 3)
         h = pixels[:, 0].astype(np.int16)
@@ -959,8 +957,8 @@ class HSVCalibratorNode(Node):
         stats = self._describe_samples(bank)
         self.sample_bank_stats[key] = stats
         self.sample_add_counts[key] = self.sample_add_counts.get(key, 0) + 1
-        # New samples make an older fit stale.  Return the context panel to
-        # ROI-bank mode until A is pressed again.
+        # 새 표본이 들어오면 이전 계산값은 오래된 값이 된다. A를 다시 누를
+        # 때까지 안내 패널을 ROI 표본 모음 상태로 되돌린다.
         self.last_fitted_profiles.pop(key, None)
         self.context_panel_modes[key] = "bank"
         self.view_mode = "calibration"
@@ -983,7 +981,7 @@ class HSVCalibratorNode(Node):
         self.get_logger().info(f"Cleared sample bank -> {key}")
 
     def _new_tuning_session(self) -> None:
-        """Start sampling the current target again without preset light classes."""
+        """고정 조명 분류 없이 현재 대상의 표본 수집을 다시 시작한다."""
         self._clear_bank()
         self._clear_roi()
         self.last_fitted_profiles.pop(self.target, None)
@@ -1005,8 +1003,8 @@ class HSVCalibratorNode(Node):
             self.get_logger().warning("Select/add ROI samples before auto-fit.")
             return
 
-        # Preserve the values from before the first A in this tuning cycle.
-        # Repeated auto-fit operations must not overwrite this restore point.
+        # 이번 조정에서 처음 A를 누르기 전 값을 보관한다. 자동 계산을 여러 번
+        # 실행하더라도 이 복원 지점을 덮어쓰지 않는다.
         self.pre_fit_profiles.setdefault(key, self._read_controls().copy())
 
         h = pixels[:, 0].astype(np.int16)
@@ -1014,8 +1012,8 @@ class HSVCalibratorNode(Node):
         v = pixels[:, 2].astype(np.float32)
 
         if key == "support":
-            # H is undefined for black and S varies with reflections.  Keep
-            # both fully open and fit only a robust upper brightness bound.
+            # 검은색은 H가 불분명하고 반사에 따라 S도 달라진다. 두 범위는
+            # 모두 열어두고 안정적인 밝기 상한만 계산한다.
             h_low, h_high = 0, 179
             s_low, s_high = 0, 255
             v_low = 0
@@ -1025,8 +1023,8 @@ class HSVCalibratorNode(Node):
                 255,
             )
         elif key == "hoop_white":
-            # Hue carries no useful information for white. Fit the maximum
-            # saturation and minimum brightness used by production.
+            # 흰색은 Hue 정보가 의미 없으므로 실제 검출에서 사용할 채도 상한과
+            # 밝기 하한만 계산한다.
             h_low, h_high = 0, 179
             s_low = 0
             s_high = clamp_int(
@@ -1061,8 +1059,8 @@ class HSVCalibratorNode(Node):
                 0,
                 255,
             )
-            # A brighter view of the same orange ball should not be rejected
-            # just because it exceeds the sampled V maximum.
+            # 같은 주황색 공이 더 밝게 보일 때 표본 V 상한을 넘었다는 이유만으로
+            # 제외되지 않도록 한다.
             v_high = (
                 255
                 if key in {"ball", "hoop_red"}
@@ -1102,7 +1100,7 @@ class HSVCalibratorNode(Node):
                 f"S={s_low}..{s_high}, V={v_low}..{v_high}"
             )
 
-    # --------------------------------------------------------------- Masks --
+    # ------------------------------------------------------------- 마스크 --
     def _process_masks(
         self,
         frame: np.ndarray,
@@ -1165,7 +1163,7 @@ class HSVCalibratorNode(Node):
             "masked_color": masked_color,
         }
 
-    # -------------------------------------------- Production ball preview --
+    # ----------------------------------------------- 실제 공 검출 미리보기 --
     @staticmethod
     def _preview_depth_m(
         depth_mm: np.ndarray,
@@ -1228,7 +1226,7 @@ class HSVCalibratorNode(Node):
         floor_mask: np.ndarray,
         depth_mm: np.ndarray,
     ) -> Optional[Dict[str, Any]]:
-        """Mirror the current IRC RealSense ball acceptance checks."""
+        """현재 IRC RealSense 공 판정 조건을 그대로 적용한다."""
         contours, _ = cv2.findContours(
             mask,
             cv2.RETR_EXTERNAL,
@@ -1398,7 +1396,7 @@ class HSVCalibratorNode(Node):
         depth_mm: np.ndarray,
         profile: Dict[str, Any],
     ) -> Tuple[np.ndarray, Dict[str, np.ndarray], Dict[str, Any]]:
-        """Draw a local preview equivalent to IRC's RealSense ball path."""
+        """IRC RealSense 공 처리 경로와 같은 로컬 미리보기를 그린다."""
         overlay = frame.copy()
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         empty_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
@@ -1740,11 +1738,9 @@ class HSVCalibratorNode(Node):
                 cv2.LINE_AA,
             )
 
-        # Candidate measurements are useful for metrics and snapshots, but
-        # drawing every automatically detected contour looks like an ROI and
-        # makes manual sampling confusing.  Keep the calculations above while
-        # leaving the main view clean; only the user-drawn ROI is rendered in
-        # _draw_status().
+        # 후보 측정값은 통계와 화면 저장에 유용하지만 모든 자동 검출 윤곽선을
+        # 그리면 ROI처럼 보여 수동 표본 선택이 헷갈린다. 계산 결과는 유지하고
+        # 주 화면에는 사용자가 선택한 ROI만 _draw_status()에서 표시한다.
 
         metrics: Dict[str, Any] = {
             "candidate_count": len(candidates),
@@ -1755,7 +1751,7 @@ class HSVCalibratorNode(Node):
         }
         return overlay, metrics
 
-    # -------------------------------------------------------------- Display --
+    # --------------------------------------------------------------- 표시 --
     @staticmethod
     def _panel(image: np.ndarray, label: str, size: Tuple[int, int] = (320, 240)) -> np.ndarray:
         if image.ndim == 2:
@@ -1775,7 +1771,7 @@ class HSVCalibratorNode(Node):
         return panel
 
     def _make_control_guide(self, profile: Dict[str, Any]) -> np.ndarray:
-        """Draw a readable guide because native Qt trackbar labels may vanish."""
+        """Qt 트랙바 글자가 사라질 수 있어 별도의 읽기 쉬운 안내를 그린다."""
         width, height = 760, 390
         panel = np.zeros((height, width, 3), dtype=np.uint8)
 
@@ -1939,8 +1935,7 @@ class HSVCalibratorNode(Node):
         profile: Dict[str, Any],
         metrics: Dict[str, Any],
     ) -> None:
-        # Requested layout: general live information at top-left and the
-        # sampling/fit result at top-right.
+        # 일반 실시간 정보는 왼쪽 위, 표본·계산 결과는 오른쪽 위에 배치한다.
         status_lines = [
             f"{self.target.upper()} | ENV {self.environment_label} | FPS {self.fps_ema:.1f}",
             (
@@ -2061,7 +2056,7 @@ class HSVCalibratorNode(Node):
             x1, y1, x2, y2 = roi_to_draw
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 255, 0), 2)
 
-    # --------------------------------------------------------------- Saving --
+    # --------------------------------------------------------------- 저장 --
     def _backup_profile_file_once(self) -> None:
         if self.session_profile_backup is not None or not self.profile_path.exists():
             return
@@ -2091,7 +2086,7 @@ class HSVCalibratorNode(Node):
             self.get_logger().error(f"Could not save profiles: {exc}")
 
     def _save_ball_ros_params(self) -> None:
-        """Export ball, black-support and floor calibration for production."""
+        """공·검은 받침대·바닥 보정값을 실제 검출용 파일로 내보낸다."""
         profile = self.store.get("ball")
         support_profile = self.store.get("support")
         floor_profile = self.store.get("floor")
@@ -2145,10 +2140,9 @@ class HSVCalibratorNode(Node):
             }
         )
 
-        # The competition detector currently uses one cv2.inRange call and
-        # therefore cannot consume a circular hue interval such as 170..10.
-        # Keep the last valid production file instead of exporting a value the
-        # detector would reject at startup.
+        # 경기용 공 검출기는 cv2.inRange를 한 번만 사용하므로 170..10 같은
+        # 순환 Hue 구간을 처리하지 못한다. 시작할 때 거부될 값을 내보내지 않고
+        # 마지막으로 유효했던 실제 검출용 파일을 유지한다.
         if values["h_low"] > values["h_high"]:
             self.get_logger().error(
                 "Ball HSV was saved to the calibration profile, but not to "
@@ -2180,7 +2174,7 @@ class HSVCalibratorNode(Node):
         )
 
     def _save_hoop_ros_params(self) -> None:
-        """Export calibrated red-border and white-interior HSV values."""
+        """보정한 빨간 테두리와 흰 내부 HSV 값을 실제 검출용으로 내보낸다."""
         values = hoop_ros_parameters(
             self.store.get("hoop_red"),
             self.store.get("hoop_white"),
@@ -2302,7 +2296,7 @@ class HSVCalibratorNode(Node):
 
         self.get_logger().info(f"Saved snapshot -> {folder}")
 
-    # ------------------------------------------------------------- Callback --
+    # --------------------------------------------------------------- 콜백 --
     def image_callback(self, color_msg: Image, depth_msg: Image) -> None:
         try:
             frame = self.bridge.imgmsg_to_cv2(
@@ -2371,7 +2365,7 @@ class HSVCalibratorNode(Node):
         self.last_outputs = outputs
         self.last_metrics = metrics
 
-        # Refresh ROI statistics every frame while keeping the same ROI.
+        # 같은 ROI를 유지하면서 매 프레임 표본 통계를 새로 계산한다.
         if self.view_mode == "calibration" and self.roi is not None:
             self._refresh_roi_pixels()
 
@@ -2420,7 +2414,7 @@ class HSVCalibratorNode(Node):
             )
         elif key == ord("n"):
             self._new_tuning_session()
-        elif key == 32:  # SPACE
+        elif key == 32:  # 스페이스바
             self._add_roi_to_bank()
         elif key == ord("a"):
             self._auto_fit()

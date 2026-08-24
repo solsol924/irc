@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-RealSense OpenCV Hoop Vision Node
+RealSense OpenCV Hoop 비전 노드
 
 역할
 1. RealSense color + aligned depth 영상을 시간 동기화해 받는다.

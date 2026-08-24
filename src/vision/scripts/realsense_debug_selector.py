@@ -63,8 +63,8 @@ class RealSenseDebugSelector(Node):
         self.ball_detected = False
         self.hurdle_detected = False
         self.hoop_detected = False
-        # None means that the decision node has not announced a mode yet.
-        # Until then, the uninterrupted raw RealSense stream is shown.
+        # None은 아직 비전 모드가 전달되지 않은 시작 상태를 뜻한다.
+        # 이때는 끊김 없는 RealSense 원본 영상을 표시한다.
         self.ball_enabled: Optional[bool] = None
         self.hoop_enabled: Optional[bool] = None
         self.selected_source = "default"
@@ -132,8 +132,8 @@ class RealSenseDebugSelector(Node):
             self.cb_hoop_state,
             10,
         )
-        # ball_vision_fusion publishes these as transient-local values. Matching
-        # that durability restores the current mode if this selector restarts.
+        # ball_vision_fusion이 transient-local로 발행하므로 같은 내구성
+        # 정책을 사용하면 선택기만 재시작해도 현재 모드를 복구할 수 있다.
         vision_mode_qos = QoSProfile(
             depth=1,
             reliability=ReliabilityPolicy.RELIABLE,
@@ -205,12 +205,11 @@ class RealSenseDebugSelector(Node):
         self.ball_enabled = bool(msg.data)
         if self.ball_enabled:
             self.selected_source = "ball"
-            # A previous ball phase must never be reused after reactivation.
+            # 재활성화할 때 이전 공 모드의 영상을 다시 사용하지 않는다.
             self.latest_ball_image = None
             self.latest_ball_image_time = 0.0
         if not self.ball_enabled:
-            # Do not let an image from the previous match phase block the
-            # next detector's default stream.
+            # 이전 경기 단계의 영상이 다음 검출기의 기본 영상을 막지 않게 한다.
             self.latest_ball_image = None
             self.latest_ball_image_time = 0.0
             if self.selected_source == "ball":
@@ -220,7 +219,7 @@ class RealSenseDebugSelector(Node):
         self.hoop_enabled = bool(msg.data)
         if self.hoop_enabled:
             self.selected_source = "hoop"
-            # Wait for a frame produced after this activation, not a cached one.
+            # 저장된 옛 영상이 아니라 활성화 이후 생성된 새 영상을 기다린다.
             self.latest_hoop_image = None
             self.latest_hoop_image_time = 0.0
         if not self.hoop_enabled:
@@ -230,9 +229,8 @@ class RealSenseDebugSelector(Node):
                 self.selected_source = "default"
 
     def _active_source(self) -> str:
-        # Select the detector that is running, even while it currently has no
-        # detection. Detection state is not an activity signal: using it here
-        # made the window retain the last ball frame after switching to hoop.
+        # 현재 검출에 실패했더라도 실행 중인 검출기를 선택한다. 검출 성공 여부를
+        # 활성 신호로 사용하면 hoop 전환 뒤에도 마지막 공 영상이 남을 수 있다.
         selected_source = getattr(self, "selected_source", "default")
         if selected_source in {"ball", "hoop"}:
             return selected_source
@@ -266,12 +264,11 @@ class RealSenseDebugSelector(Node):
         return image, received_at
 
     def cb_raw_image(self, msg: Image) -> None:
-        """Drive the output from the uninterrupted RealSense color stream.
+        """끊김 없는 RealSense 컬러 영상을 기준으로 출력 주기를 유지한다.
 
-        Detector debug callbacks only cache their newest image.  Every raw color
-        frame publishes either one newly arrived active-mode debug frame or the
-        raw frame itself, so changing modes cannot leave the output topic silent
-        while the next detector produces its first result.
+        각 검출기의 디버그 콜백은 최신 영상 한 장만 저장한다. 원본 컬러
+        프레임이 들어올 때 활성 모드의 새 디버그 영상이 있으면 그 영상을,
+        없으면 원본을 발행해 모드 전환 중에도 출력 토픽이 멈추지 않게 한다.
         """
         self.latest_raw_image = msg
         now = time.monotonic()

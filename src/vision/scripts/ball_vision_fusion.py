@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Ball Vision Fusion Node.
+공 비전 융합 노드.
 
 역할
 1. RealSense color + aligned depth 영상에서 OpenCV로 주황색 공을 직접 검출한다.
@@ -601,7 +601,7 @@ class BallVisionFusionNode(Node):
         )
 
     def _load_hsv_defaults(self, path: Path) -> Dict[str, Any]:
-        """Read the last accepted ball/support/floor calibration at startup."""
+        """시작할 때 마지막으로 확정한 공·받침대·바닥 보정값을 읽는다."""
         fallback: Dict[str, Any] = {
             "h_low": 8,
             "h_high": 60,
@@ -879,12 +879,11 @@ class BallVisionFusionNode(Node):
         *,
         force: bool = False,
     ) -> bool:
-        """Coordinate ball/hoop processing entirely inside vision.
+        """vision 내부에서 공과 hoop 처리 모드를 전환한다.
 
-        The RealSense camera and both synchronized subscriptions stay alive.
-        Only the expensive OpenCV callback selected by the latched possession
-        state is enabled.  OFF is always published before ON so the handoff
-        does not briefly run both detectors.
+        RealSense 카메라와 두 동기화 구독은 계속 유지한다. 확정된 공 소유
+        상태에 맞는 OpenCV 콜백만 활성화하며, 두 검출기가 전환 순간 함께
+        실행되지 않도록 항상 OFF를 먼저 발행하고 ON을 나중에 발행한다.
         """
         if not getattr(self, "manage_activity_from_ball_in_hand", True):
             return False
@@ -899,14 +898,14 @@ class BallVisionFusionNode(Node):
         hoop_pub = getattr(self, "pub_hoop_active", None)
 
         if hoop_active:
-            # ball OFF -> hoop ON
+            # 공 검출 OFF → hoop 검출 ON
             self.cb_ball_active(Bool(data=False))
             if ball_pub is not None:
                 ball_pub.publish(Bool(data=False))
             if hoop_pub is not None:
                 hoop_pub.publish(Bool(data=True))
         else:
-            # hoop OFF -> ball ON
+            # hoop 검출 OFF → 공 검출 ON
             if hoop_pub is not None:
                 hoop_pub.publish(Bool(data=False))
             self.cb_ball_active(Bool(data=True))
@@ -923,7 +922,7 @@ class BallVisionFusionNode(Node):
         return True
 
     # =============================================================
-    # CameraInfo
+    # 카메라 내부 파라미터
     # =============================================================
     def cb_camera_info(self, msg: CameraInfo) -> None:
         if len(msg.k) < 9:
@@ -1127,7 +1126,7 @@ class BallVisionFusionNode(Node):
         frame_w: int,
         frame_h: int,
     ) -> Optional[Dict[str, Any]]:
-        """Find a physically plausible orange ball on its black support."""
+        """검은 받침대 위에 있는 물리적으로 타당한 주황색 공을 찾는다."""
         contours, _ = cv2.findContours(
             mask,
             cv2.RETR_EXTERNAL,
@@ -1512,7 +1511,7 @@ class BallVisionFusionNode(Node):
         }
 
     # =============================================================
-    # Webcam YOLO
+    # 웹캠 YOLO
     # =============================================================
     def cb_webcam_state(self, msg: String) -> None:
         if not getattr(self, "ball_detection_active", True):
