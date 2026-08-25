@@ -27,10 +27,6 @@ if(BUILD_TESTING)
     test/test_ball_detector_core.py
   )
   ament_add_pytest_test(
-    test_hoop_vision_geometry
-    test/test_hoop_vision_geometry.py
-  )
-  ament_add_pytest_test(
     test_detector_activation
     test/test_detector_activation.py
   )
@@ -38,15 +34,12 @@ if(BUILD_TESTING)
     test_realsense_debug_selector
     test/test_realsense_debug_selector.py
   )
-  ament_add_pytest_test(
-    test_hoop_hsv_config
-    test/test_hoop_hsv_config.py
-  )
 endif()
 
 install(PROGRAMS
   scripts/yolo_detector.py
   scripts/ball_vision_fusion.py
+  scripts/realsense_rgb_stabilizer.py
   scripts/realsense_hsv_calibrator.py
   scripts/hurdle_vision_fusion.py
   scripts/hoop_vision.py

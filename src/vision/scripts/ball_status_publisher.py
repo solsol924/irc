@@ -78,9 +78,9 @@ class BallDecision:
 
         # Webcam 접근 및 pick 기준
         self.webcam_angle_center_tol = 5.0
-        self.webcam_pick_y_max_px = 100.0
-        self.webcam_pick_x_min_px = -38.0
-        self.webcam_pick_x_max_px = 33.0
+        self.webcam_pick_y_max_px = 90.0
+        self.webcam_pick_x_min_px = -35.0
+        self.webcam_pick_x_max_px = 30.0
 
     def decide(self, features: BallFeatures) -> Tuple[int, float]:
         # 공을 잡고 있고 골대가 120cm 이내이면 골대 기준으로 판단한다.
@@ -237,6 +237,7 @@ class BallStatusPublisher:
         # 확정한다.
         self.webcam_detection_buffer = deque(maxlen=5)
         self.webcam_ball_confirmed = False
+        self.detection_enabled = True
         # 27번이 실제 motion_command로 발행될 때까지 결과를 유지하고,
         # 실행 확인 후에는 Pick 결과 확인이 끝날 때까지 다시
         # 발행하지 않는다.
@@ -268,6 +269,11 @@ class BallStatusPublisher:
         self.webcam_ball_confirmed = False
         self.back_to_initial_waiting = False
         self.back_to_initial_done = False
+
+    def set_detection_enabled(self, enabled: bool) -> None:
+        """Enable voting only for frames captured after the mode switch."""
+        self.detection_enabled = bool(enabled)
+        self._reset_webcam_detection_cycle()
 
     def _reset_shoot_cycle(self) -> None:
         self.shoot_initial_waiting = False
@@ -314,7 +320,6 @@ class BallStatusPublisher:
 
         if command == BallStatus.Pick_Ready:
             self.pick_command_seen = True
-            self.ball_in_hand = True  # 테스트 전용
             return
 
         # MainDecision은 Pick 모션이 끝난 뒤 CheckBall()을 실행한
@@ -362,7 +367,11 @@ class BallStatusPublisher:
         if not self.ball_in_hand:
             self._reset_shoot_cycle()
 
-        if not self.back_to_initial_done and not self.webcam_ball_confirmed:
+        if (
+            self.detection_enabled
+            and not self.back_to_initial_done
+            and not self.webcam_ball_confirmed
+        ):
             # 손에 든 공은 다음 공의 최초 웹캠 검출로 집계하지
             # 않는다.
             detected_for_vote = bool(
@@ -384,7 +393,9 @@ class BallStatusPublisher:
         # 막는다. 확정 후에는 27번 모션의 실제 발행을 확인할 때까지
         # 27을 유지한다.
         webcam_enabled = bool(
-            webcam_ball_detected and self.back_to_initial_done
+            self.detection_enabled
+            and webcam_ball_detected
+            and self.back_to_initial_done
         )
         features = BallFeatures(
             realsense_ball_detected=realsense_ball_detected,

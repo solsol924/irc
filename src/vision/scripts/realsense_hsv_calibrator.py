@@ -66,9 +66,11 @@ from sensor_msgs.msg import CameraInfo, Image
 
 from ball_detector_core import (
     BallSupportConfig,
+    ball_support_confidence,
     black_support_mask,
     evaluate_ball_support,
     hsv_range_mask,
+    sample_ball_inner_depth,
 )
 
 
@@ -94,25 +96,31 @@ OVEREXPOSED_V = 245
 # 일부러 느슨한 보정기 윤곽선 슬라이더를 사용하지 않으므로 D 모드에서는
 # 색상 마스크뿐 아니라 실제 경기용 공 검출 조건을 통과할지도 확인할 수 있다.
 BALL_PREVIEW_DEPTH_MAX_MM = 1_500.0
-BALL_PREVIEW_MIN_AREA = 300.0
-BALL_PREVIEW_MAX_CIRCLE_RATIO_ERROR = 0.45
+BALL_PREVIEW_MIN_AREA = 120.0
+BALL_PREVIEW_MAX_CIRCLE_RATIO_ERROR = 0.65
 BALL_PREVIEW_EDGE_MARGIN_PX = 3
 BALL_PREVIEW_EDGE_MIN_AREA_RATIO = 0.65
-BALL_PREVIEW_EDGE_MAX_CIRCLE_RATIO_ERROR = 0.65
+BALL_PREVIEW_EDGE_MAX_CIRCLE_RATIO_ERROR = 0.75
 BALL_PREVIEW_DIAMETER_MIN_M = 0.050
 BALL_PREVIEW_DIAMETER_MAX_M = 0.070
 BALL_PREVIEW_RADIUS_MIN_RATIO = 0.45
 BALL_PREVIEW_RADIUS_MAX_RATIO = 1.70
 BALL_PREVIEW_EDGE_RADIUS_MIN_RATIO = 0.60
 BALL_PREVIEW_EDGE_RADIUS_MAX_RATIO = 1.50
-BALL_PREVIEW_MIN_CIRCULARITY = 0.55
-BALL_PREVIEW_EDGE_MIN_CIRCULARITY = 0.48
+# 실전 ball_vision_fusion 기본값과 반드시 같이 유지한다. 보정 화면은 통과하지만
+# 실제 노드에서 REJECT_SHAPE가 되는 혼란을 막기 위해 0.38/0.30으로 맞춘다.
+BALL_PREVIEW_MIN_CIRCULARITY = 0.38
+BALL_PREVIEW_EDGE_MIN_CIRCULARITY = 0.30
 BALL_PREVIEW_MIN_ASPECT = 0.55
 BALL_PREVIEW_MAX_ASPECT = 1.80
 BALL_PREVIEW_EDGE_MIN_ASPECT = 0.45
 BALL_PREVIEW_EDGE_MAX_ASPECT = 2.20
 BALL_PREVIEW_MORPH_SIZE = 5
 BALL_PREVIEW_HOLD_FRAMES = 3
+# 실전 노드의 쉽게 바꿀 수 있는 50% 내부 깊이 시작값과 동일하게 유지한다.
+BALL_PREVIEW_DEPTH_INNER_RADIUS_RATIO = 0.50
+BALL_PREVIEW_DEPTH_MIN_VALID_PIXELS = 8
+BALL_PREVIEW_DEPTH_MIN_VALID_RATIO = 0.15
 
 TARGETS = ("ball", "support", "floor", "hoop_red", "hoop_white")
 
@@ -1169,21 +1177,19 @@ class HSVCalibratorNode(Node):
         depth_mm: np.ndarray,
         cx: int,
         cy: int,
+        radius: float,
     ) -> Optional[float]:
-        frame_h, frame_w = depth_mm.shape[:2]
-        x1 = max(0, cx - 1)
-        x2 = min(frame_w, cx + 2)
-        y1 = max(0, cy - 1)
-        y2 = min(frame_h, cy + 2)
-        patch = depth_mm[y1:y2, x1:x2]
-        valid = patch[
-            np.isfinite(patch)
-            & (patch > 0.0)
-            & (patch <= BALL_PREVIEW_DEPTH_MAX_MM)
-        ]
-        if valid.size == 0:
-            return None
-        return float(np.median(valid) * 0.001)
+        sample = sample_ball_inner_depth(
+            depth=depth_mm,
+            center=(float(cx), float(cy)),
+            detected_radius_px=float(radius),
+            depth_scale=0.001,
+            depth_max_m=BALL_PREVIEW_DEPTH_MAX_MM * 0.001,
+            inner_radius_ratio=BALL_PREVIEW_DEPTH_INNER_RADIUS_RATIO,
+            min_valid_pixels=BALL_PREVIEW_DEPTH_MIN_VALID_PIXELS,
+            min_valid_ratio=BALL_PREVIEW_DEPTH_MIN_VALID_RATIO,
+        )
+        return sample.depth_m
 
     def _preview_support_config(self) -> BallSupportConfig:
         settings = self.store.get_detector()
@@ -1299,7 +1305,7 @@ class HSVCalibratorNode(Node):
 
             cx = int(round(cx_float))
             cy = int(round(cy_float))
-            z_m = self._preview_depth_m(depth_mm, cx, cy)
+            z_m = self._preview_depth_m(depth_mm, cx, cy, radius)
             if z_m is None or self.fx <= 0.0 or self.fy <= 0.0:
                 continue
 
@@ -1337,6 +1343,7 @@ class HSVCalibratorNode(Node):
                 config=support_config,
                 black_mask=support_black_mask,
             )
+            support_confidence = ball_support_confidence(support)
             if not bool(support["accepted"]):
                 rejection = {
                     **support,
@@ -1349,15 +1356,12 @@ class HSVCalibratorNode(Node):
                     > float(self.preview_last_rejection["black_ratio"])
                 ):
                     self.preview_last_rejection = rejection
-                continue
 
             score = (
                 ratio_error
                 + (1.0 - min(circularity, 1.0))
                 + abs(radius_ratio - 1.0)
-                + 0.5 * (1.0 - float(support["black_ratio"]))
-                + float(support["surrounding_ball_ratio"])
-                + float(support["floor_ratio"])
+                + (1.0 - support_confidence)
             )
             if best is not None and score >= float(best["score"]):
                 continue
@@ -1386,6 +1390,8 @@ class HSVCalibratorNode(Node):
                     support["visible_fraction"]
                 ),
                 "support_outer_radius": float(support["outer_radius_px"]),
+                "support_passed": bool(support["accepted"]),
+                "support_confidence": float(support_confidence),
             }
 
         return best
@@ -1403,6 +1409,7 @@ class HSVCalibratorNode(Node):
         ball_color_mask = empty_mask.copy()
         depth_mask = empty_mask.copy()
         mask = empty_mask.copy()
+        combined_mask = empty_mask.copy()
         h_low = int(profile["h_low"])
         h_high = int(profile["h_high"])
         compatible = h_low <= h_high
@@ -1440,13 +1447,17 @@ class HSVCalibratorNode(Node):
                 & (depth_mm <= BALL_PREVIEW_DEPTH_MAX_MM)
             )
             depth_mask[valid_depth] = 255
-            mask = cv2.bitwise_and(ball_color_mask, depth_mask)
+            # 실전 노드와 동일하게 공 형상은 HSV만으로 만든다. depth_mask는
+            # 진단 패널과 후보 내부 깊이 검사에만 사용하여 depth hole이 공의
+            # 원형 윤곽을 찢지 않게 한다.
+            mask = ball_color_mask.copy()
             kernel = cv2.getStructuringElement(
                 cv2.MORPH_ELLIPSE,
                 (BALL_PREVIEW_MORPH_SIZE, BALL_PREVIEW_MORPH_SIZE),
             )
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+            combined_mask = cv2.bitwise_and(mask, depth_mask)
             detection = self._find_production_ball(
                 mask,
                 hsv,
@@ -1461,7 +1472,7 @@ class HSVCalibratorNode(Node):
             "raw_color_mask": ball_color_mask,
             "color_mask": mask,
             "depth_mask": depth_mask,
-            "combined_mask": mask,
+            "combined_mask": combined_mask,
             "masked_color": masked_color,
         }
 
@@ -1517,9 +1528,10 @@ class HSVCalibratorNode(Node):
                 f"circ {float(display['circularity']):.2f}"
             )
             support_detail = (
+                f"support score {float(display['support_confidence']):.2f}  "
+                f"pass {int(display['support_passed'])}  "
                 f"black {float(display['support_black_ratio']):.2f}  "
                 f"floor {float(display['support_floor_ratio']):.2f}  "
-                f"orange {float(display['support_ball_ratio']):.2f}  "
                 f"sectors {int(display['support_sectors'])}"
             )
         else:
@@ -1536,7 +1548,7 @@ class HSVCalibratorNode(Node):
                 )
             else:
                 support_detail = (
-                    "Every ball must pass black-support/floor checks"
+                    "Black support contributes an auxiliary candidate score"
                 )
 
         cv2.rectangle(overlay, (5, 5), (480, 92), (0, 0, 0), -1)

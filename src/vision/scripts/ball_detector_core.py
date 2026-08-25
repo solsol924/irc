@@ -65,6 +65,262 @@ class BallSupportConfig:
         )
 
 
+@dataclass(frozen=True)
+class BallDepthSample:
+    """
+    공 내부에서 모은 깊이 표본과 그 신뢰도.
+
+    ``depth_m``이 ``None``이면 공 색/형상 후보 자체가 없다는 뜻이 아니라,
+    이번 프레임의 깊이만 행동 판단에 쓰기 어렵다는 뜻이다. 색상 윤곽과 깊이
+    성공 여부를 분리해야 RealSense depth hole 때문에 실제 공 윤곽까지 함께
+    사라지는 문제를 피할 수 있다.
+    """
+
+    depth_m: Optional[float]
+    valid_pixels: int
+    sample_pixels: int
+    valid_ratio: float
+    median_absolute_deviation_m: Optional[float]
+
+
+def sample_ball_inner_depth(
+    *,
+    depth: np.ndarray,
+    center: Tuple[float, float],
+    detected_radius_px: float,
+    depth_scale: float,
+    depth_max_m: float,
+    inner_radius_ratio: float = 0.50,
+    min_valid_pixels: int = 8,
+    min_valid_ratio: float = 0.15,
+) -> BallDepthSample:
+    """
+    검출 원의 안쪽 영역에서 안정적인 깊이 중앙값을 구한다.
+
+    왜 중심 3x3 대신 안쪽 원을 사용하는가
+    ----------------------------------------
+    aligned depth도 물체 경계에서는 RGB와 1~수 픽셀 어긋날 수 있다. 공의
+    가장자리나 단 9픽셀만 읽으면 작은 흔들림에도 받침대/바닥 깊이가 섞인다.
+    그래서 검출 반지름 ``R``의 안쪽 ``R * inner_radius_ratio``만 사용한다.
+
+    ``inner_radius_ratio`` 기본값 0.50은 시작값일 뿐 고정 규칙이 아니다.
+    현장 카메라에서 공 표면의 유효 depth가 부족하면 0.60~0.70으로 올리고,
+    배경 깊이가 자주 섞이면 0.40~0.45로 내린다. 이 값은 ROS 파라미터
+    ``depth_inner_radius_ratio``와 연결되어 있으므로 소스 수정 없이 바꿀 수
+    있게 유지한다.
+
+    중앙값은 일부 outlier에 강하고, MAD(median absolute deviation)는 내부
+    깊이가 한 평면/물체로 모였는지 디버깅할 수 있게 함께 반환한다. 유효
+    픽셀 수 또는 비율이 부족하면 ``depth_m=None``을 반환하되 색상 검출을
+    실패로 바꾸지는 않는다.
+    """
+    if depth.ndim != 2 or depth.size == 0:
+        return BallDepthSample(None, 0, 0, 0.0, None)
+
+    height, width = depth.shape[:2]
+    cx, cy = float(center[0]), float(center[1])
+    ratio = max(0.05, min(1.0, float(inner_radius_ratio)))
+    sample_radius = float(detected_radius_px) * ratio
+    if (
+        width <= 0
+        or height <= 0
+        or not math.isfinite(cx)
+        or not math.isfinite(cy)
+        or not math.isfinite(sample_radius)
+        or sample_radius < 1.0
+        or not math.isfinite(depth_scale)
+        or depth_scale <= 0.0
+        or not math.isfinite(depth_max_m)
+        or depth_max_m <= 0.0
+    ):
+        return BallDepthSample(None, 0, 0, 0.0, None)
+
+    x1 = max(0, int(math.floor(cx - sample_radius)))
+    x2 = min(width, int(math.ceil(cx + sample_radius)) + 1)
+    y1 = max(0, int(math.floor(cy - sample_radius)))
+    y2 = min(height, int(math.ceil(cy + sample_radius)) + 1)
+    if x2 <= x1 or y2 <= y1:
+        return BallDepthSample(None, 0, 0, 0.0, None)
+
+    local_depth_m = (
+        depth[y1:y2, x1:x2].astype(np.float32) * float(depth_scale)
+    )
+    x_coords = np.arange(x1, x2, dtype=np.float32)[None, :] - cx
+    y_coords = np.arange(y1, y2, dtype=np.float32)[:, None] - cy
+    inner_disk = (
+        x_coords * x_coords + y_coords * y_coords
+        <= sample_radius * sample_radius
+    )
+    sample_pixels = int(np.count_nonzero(inner_disk))
+    valid_mask = (
+        inner_disk
+        & np.isfinite(local_depth_m)
+        & (local_depth_m > 0.0)
+        & (local_depth_m <= float(depth_max_m))
+    )
+    values = local_depth_m[valid_mask]
+    valid_pixels = int(values.size)
+    valid_ratio = (
+        float(valid_pixels / sample_pixels) if sample_pixels > 0 else 0.0
+    )
+    if (
+        valid_pixels < max(1, int(min_valid_pixels))
+        or valid_ratio < max(0.0, min(1.0, float(min_valid_ratio)))
+    ):
+        return BallDepthSample(
+            None,
+            valid_pixels,
+            sample_pixels,
+            valid_ratio,
+            None,
+        )
+
+    median = float(np.median(values))
+    mad = float(np.median(np.abs(values - median)))
+    return BallDepthSample(
+        median,
+        valid_pixels,
+        sample_pixels,
+        valid_ratio,
+        mad,
+    )
+
+
+@dataclass(frozen=True)
+class BallMatchConfig:
+    """서로 다른 원본 프레임의 두 후보를 같은 공으로 볼 허용 범위."""
+
+    center_distance_px: float = 80.0
+    center_radius_scale: float = 4.0
+    depth_absolute_m: float = 0.30
+    depth_relative: float = 0.30
+    radius_ratio_min: float = 0.45
+    radius_ratio_max: float = 2.20
+
+
+def same_ball_candidate(
+    first: Dict[str, Any],
+    second: Dict[str, Any],
+    config: BallMatchConfig,
+) -> bool:
+    """
+    두 *원본* 검출이 같은 공일 가능성이 높은지 넉넉하게 비교한다.
+
+    좌표를 정확히 같게 비교하면 보행 진동에서 실제 공도 2/3 확인을 통과하지
+    못한다. 중심 허용 거리는 고정 픽셀과 공 반지름 배수 중 큰 값을 사용하고,
+    깊이도 절대 오차와 상대 오차 중 큰 값을 허용한다. 따라서 가까운 공이
+    화면에서 크게 움직이는 경우에도 반지름에 비례해 gate가 함께 넓어진다.
+
+    이 검사는 최초 SEARCH 확정과 완전 분실 뒤 재확정에만 사용한다. TRACK
+    상태에서 매 프레임 2/3을 다시 요구하지 않는다.
+    """
+    try:
+        first_x = float(first["raw_ball_x"])
+        first_y = float(first["raw_ball_y"])
+        first_z = float(first["raw_z_m"])
+        first_radius = float(first["raw_radius"])
+        second_x = float(second["raw_ball_x"])
+        second_y = float(second["raw_ball_y"])
+        second_z = float(second["raw_z_m"])
+        second_radius = float(second["raw_radius"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    values = (
+        first_x,
+        first_y,
+        first_z,
+        first_radius,
+        second_x,
+        second_y,
+        second_z,
+        second_radius,
+    )
+    if not all(math.isfinite(value) for value in values):
+        return False
+    if first_z <= 0.0 or second_z <= 0.0:
+        return False
+    if first_radius <= 0.0 or second_radius <= 0.0:
+        return False
+
+    center_distance = math.hypot(second_x - first_x, second_y - first_y)
+    center_limit = max(
+        float(config.center_distance_px),
+        float(config.center_radius_scale) * max(first_radius, second_radius),
+    )
+    if center_distance > center_limit:
+        return False
+
+    depth_limit = max(
+        float(config.depth_absolute_m),
+        float(config.depth_relative) * max(first_z, second_z),
+    )
+    if abs(second_z - first_z) > depth_limit:
+        return False
+
+    radius_ratio = second_radius / first_radius
+    return bool(
+        float(config.radius_ratio_min)
+        <= radius_ratio
+        <= float(config.radius_ratio_max)
+    )
+
+
+def expanded_tracking_roi(
+    *,
+    frame_width: int,
+    frame_height: int,
+    detection: Dict[str, Any],
+    velocity_px: Tuple[float, float] = (0.0, 0.0),
+    missed_frames: int = 0,
+    radius_scale: float = 4.0,
+    expansion_per_miss: float = 1.5,
+    minimum_half_size_px: float = 48.0,
+) -> Tuple[int, int, int, int]:
+    """
+    직전 공 주변의 ROI를 만들고 미검출 횟수만큼 즉시 넓힌다.
+
+    반환값은 ``(x1, y1, x2, y2)``이며 끝 좌표는 NumPy slice처럼 제외된다.
+    기본 ``radius_scale=4``이면 전체 ROI 폭은 공 지름의 약 4배이다.
+
+    이 ROI는 카메라를 멈춰 두거나 기다리는 기능이 아니다. 호출자는 같은
+    카메라 콜백 안에서 ROI를 먼저 검사하고, 못 찾으면 바로 전체 프레임을
+    검사한다. 따라서 ROI 확대 때문에 로봇 정지시간이 추가되지 않는다.
+    """
+    width = max(1, int(frame_width))
+    height = max(1, int(frame_height))
+    try:
+        center_x = float(detection["raw_ball_x"])
+        center_y = float(detection["raw_ball_y"])
+        radius = float(detection["raw_radius"])
+    except (KeyError, TypeError, ValueError):
+        return (0, 0, width, height)
+
+    if not all(math.isfinite(v) for v in (center_x, center_y, radius)):
+        return (0, 0, width, height)
+    if radius <= 0.0:
+        return (0, 0, width, height)
+
+    misses = max(0, int(missed_frames))
+    expansion = max(1.0, float(expansion_per_miss)) ** misses
+    half_size = max(
+        float(minimum_half_size_px),
+        radius * max(1.0, float(radius_scale)),
+    ) * expansion
+    # 마지막 두 원본 검출로 계산한 속도만큼 다음 중심을 예측한다. 여러 프레임
+    # 놓친 경우에는 예측 이동량도 늘지만 ROI 자체도 함께 커져 오차를 흡수한다.
+    predicted_x = center_x + float(velocity_px[0]) * (misses + 1)
+    predicted_y = center_y + float(velocity_px[1]) * (misses + 1)
+
+    x1 = max(0, int(math.floor(predicted_x - half_size)))
+    x2 = min(width, int(math.ceil(predicted_x + half_size)) + 1)
+    y1 = max(0, int(math.floor(predicted_y - half_size)))
+    y2 = min(height, int(math.ceil(predicted_y + half_size)) + 1)
+    if x2 <= x1 or y2 <= y1:
+        return (0, 0, width, height)
+    return (x1, y1, x2, y2)
+
+
 def hsv_range_mask(
     hsv: np.ndarray,
     lower: Tuple[int, int, int],
@@ -286,8 +542,13 @@ def evaluate_ball_support(
         "accepted": not failures,
         "reason": "ok" if not failures else ",".join(failures),
         "black_ratio": black_ratio,
+        "required_black_ratio": float(required_black_ratio),
         "surrounding_ball_ratio": surrounding_ball_ratio,
+        "max_surrounding_ball_ratio": float(
+            cfg.surrounding_ball_ratio_max
+        ),
         "floor_ratio": floor_ratio,
+        "max_floor_ratio": float(cfg.floor_ratio_max),
         "qualified_sectors": int(qualified_sectors),
         "required_sectors": int(required_sectors),
         "sector_ratios": sector_ratios,
@@ -299,13 +560,76 @@ def evaluate_ball_support(
     }
 
 
+def ball_support_confidence(result: Dict[str, Any]) -> float:
+    """
+    받침대 검사 결과를 hard reject 대신 0~1 보조 점수로 바꾼다.
+
+    받침대는 카메라 각도에 따라 원형 고리가 아니라 타원/반달처럼 보이고,
+    흔들림이나 프레임 경계 때문에 일부만 보일 수 있다. 따라서 한 임곗값을
+    못 넘었다는 이유만으로 HSV·깊이·실물 크기를 통과한 실제 공을 즉시
+    삭제하지 않는다. 대신 다음 후보 중 어느 것이 공다운지 고르는 점수에
+    받침대 증거를 사용한다.
+
+    이 함수는 받침대를 무시하지 않는다. 검은 비율과 여러 방향의 검은 영역은
+    점수를 올리고, 공 색 번짐과 바닥 비율은 점수를 내린다. 호출자는
+    ``1 - confidence``를 후보 비용에 더하면 된다. 최종 오검출 억제는 이
+    보조 점수와 서로 다른 원본 프레임의 2/3 일치 검사를 함께 사용한다.
+    """
+
+    def progress(value: float, target: float) -> float:
+        if target <= 1e-6:
+            return 1.0
+        return max(0.0, min(1.0, value / target))
+
+    def below_limit(value: float, limit: float) -> float:
+        if value <= limit:
+            return 1.0
+        remaining = max(1e-6, 1.0 - limit)
+        return max(0.0, 1.0 - (value - limit) / remaining)
+
+    black = progress(
+        float(result.get("black_ratio", 0.0)),
+        float(result.get("required_black_ratio", 1.0)),
+    )
+    sectors = progress(
+        float(result.get("qualified_sectors", 0)),
+        float(result.get("required_sectors", 1)),
+    )
+    visibility = progress(
+        float(result.get("visible_fraction", 0.0)),
+        float(result.get("required_visible_fraction", 1.0)),
+    )
+    orange = below_limit(
+        float(result.get("surrounding_ball_ratio", 1.0)),
+        float(result.get("max_surrounding_ball_ratio", 0.0)),
+    )
+    floor = below_limit(
+        float(result.get("floor_ratio", 1.0)),
+        float(result.get("max_floor_ratio", 0.0)),
+    )
+
+    # 검은 받침대 자체를 가장 중요하게 보되, 카메라 경계/가림 때문에 보이는
+    # 면적이 작다는 이유만으로 점수가 0이 되지 않도록 가시성 가중치는 낮춘다.
+    score = (
+        0.40 * black
+        + 0.25 * sectors
+        + 0.10 * visibility
+        + 0.10 * orange
+        + 0.15 * floor
+    )
+    return max(0.0, min(1.0, float(score)))
+
+
 def _empty_support_result(reason: str) -> Dict[str, Any]:
     return {
         "accepted": False,
         "reason": reason,
         "black_ratio": 0.0,
+        "required_black_ratio": 1.0,
         "surrounding_ball_ratio": 0.0,
+        "max_surrounding_ball_ratio": 0.0,
         "floor_ratio": 0.0,
+        "max_floor_ratio": 0.0,
         "qualified_sectors": 0,
         "required_sectors": 0,
         "sector_ratios": [],

@@ -34,6 +34,7 @@
 import json
 import math
 import time
+from collections import deque
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -50,10 +51,16 @@ from sensor_msgs.msg import CameraInfo, Image
 from std_msgs.msg import Bool, String
 
 from ball_detector_core import (
+    BallDepthSample,
+    BallMatchConfig,
     BallSupportConfig,
+    ball_support_confidence,
     black_support_mask,
+    expanded_tracking_roi,
     evaluate_ball_support,
     hsv_range_mask,
+    same_ball_candidate,
+    sample_ball_inner_depth,
 )
 from ball_status_publisher import BallStatusPublisher
 
@@ -84,7 +91,10 @@ class BallVisionFusionNode(Node):
         # =========================================================
         # ROS 토픽
         # =========================================================
-        self.declare_parameter("realsense_color_topic", "/camera/color/image_raw")
+        self.declare_parameter(
+            "realsense_color_topic",
+            "/camera/color/image_raw",
+        )
         self.declare_parameter(
             "realsense_depth_topic",
             "/camera/aligned_depth_to_color/image_raw",
@@ -128,8 +138,10 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("v_low", hsv_defaults["v_low"])
         self.declare_parameter("v_high", hsv_defaults["v_high"])
 
-        # 공은 경기 규칙상 항상 지름 150 mm의 검은 받침대 위에 있다.
-        # 모든 RealSense 공 후보가 이 색상/크기 문맥을 통과해야 한다.
+        # 공은 경기 규칙상 지름 150 mm의 검은 받침대 위에 있다. 다만 받침대는
+        # 카메라 각도/흔들림에 따라 타원 또는 공 아래쪽 반달처럼 보일 수 있다.
+        # 아래 값들은 후보를 즉시 폐기하는 hard gate가 아니라 어느 후보가 더
+        # 공다운지 고르는 보조 점수에 사용한다.
         self.declare_parameter(
             "support_diameter_m", hsv_defaults["support_diameter_m"]
         )
@@ -178,14 +190,16 @@ class BallVisionFusionNode(Node):
 
         self.declare_parameter("depth_threshold_m", 1.5)
         self.declare_parameter("depth_scale", 0.001)  # 16UC1 mm -> m
-        # 먼 거리에서 작아진 공 마스크도 후보로 유지한다.
-        self.declare_parameter("min_contour_area", 300.0)
-        # 검은 무늬·반사광·depth hole로 원 내부가 비어도 허용한다.
-        self.declare_parameter("max_circle_ratio_error", 0.45)
+        # HSV 보정 프로파일의 min_area=120과 실제 런타임을 맞춘다. 이전 300은
+        # 1~1.5 m에서 작아진 공 또는 일부가 어두워진 공을 너무 쉽게 버렸다.
+        self.declare_parameter("min_contour_area", 120.0)
+        # 검은 무늬·반사광으로 HSV 원 내부가 비어도 허용한다. 이제 depth hole은
+        # HSV 윤곽에서 제거하지 않으므로 이 값은 순수 색상 마스크 형상만 다룬다.
+        self.declare_parameter("max_circle_ratio_error", 0.65)
         # 화면 경계에 걸려 일부가 잘린 공은 면적과 원형도 조건을 완화한다.
         self.declare_parameter("edge_ball_margin_px", 3)
         self.declare_parameter("edge_min_contour_area_ratio", 0.65)
-        self.declare_parameter("edge_max_circle_ratio_error", 0.65)
+        self.declare_parameter("edge_max_circle_ratio_error", 0.75)
         # 실제 공 지름은 약 5~7 cm이다. Depth와 CameraInfo로 영상에서
         # 예상되는 픽셀 반지름을 계산해 지나치게 크거나 작은 색상 물체를 제거한다.
         # 마스크가 공 전체를 채우지 않을 수 있어 초기 허용 범위는 넉넉하게 둔다.
@@ -195,16 +209,53 @@ class BallVisionFusionNode(Node):
         self.declare_parameter("radius_size_max_ratio", 1.70)
         self.declare_parameter("edge_radius_size_min_ratio", 0.60)
         self.declare_parameter("edge_radius_size_max_ratio", 1.50)
-        # 최소 외접원 면적뿐 아니라 contour 둘레 기반 원형도와 bbox 비율도 검사한다.
-        self.declare_parameter("min_circularity", 0.55)
-        self.declare_parameter("edge_min_circularity", 0.48)
+        # 기존 0.55는 흔들림/무늬 때문에 찌그러진 실제 공을 자주 거부했다.
+        # 시작값 0.38은 hsv_profiles.yaml의 보정값(0.33)에 가깝게 완화하되,
+        # 종횡비·실물 크기·깊이·시간 일치 검사를 뒤에서 계속 적용한다.
+        self.declare_parameter("min_circularity", 0.38)
+        self.declare_parameter("edge_min_circularity", 0.30)
         self.declare_parameter("min_aspect_ratio", 0.55)
         self.declare_parameter("max_aspect_ratio", 1.80)
         self.declare_parameter("edge_min_aspect_ratio", 0.45)
         self.declare_parameter("edge_max_aspect_ratio", 2.20)
         self.declare_parameter("morph_kernel_size", 5)
-        self.declare_parameter("depth_patch_radius", 1)
+        # 깊이는 중심 3x3 대신 검출 반지름의 안쪽 50% 원에서 읽는다.
+        # 0.50은 현장 조정 시작값이다. depth가 부족하면 0.60~0.70, 배경이
+        # 섞이면 0.40~0.45로 바꾼다. 이 파라미터 이름을 검색하면 실제 사용
+        # 위치와 상세 설명을 쉽게 찾을 수 있다.
+        self.declare_parameter("depth_inner_radius_ratio", 0.50)
+        self.declare_parameter("depth_min_valid_pixels", 8)
+        self.declare_parameter("depth_min_valid_ratio", 0.15)
+        # 받침대 confidence가 후보 선택에 미치는 정도. 0이면 받침대 점수를
+        # 사용하지 않고, 값이 클수록 검은 받침대가 잘 보이는 후보를 선호한다.
+        self.declare_parameter("support_score_weight", 1.0)
+
+        # 원본(raw) 검출 3개 중 같은 공 2개가 있어야 SEARCH를 확정한다.
+        # TRACK 중에는 매 프레임 이 투표를 다시 하지 않는다. 아래 위치/깊이
+        # 허용값은 보행 흔들림을 흡수하도록 의도적으로 넓게 시작한다.
+        self.declare_parameter("confirmation_window_frames", 3)
+        self.declare_parameter("confirmation_required_hits", 2)
+        self.declare_parameter("confirm_center_distance_px", 80.0)
+        self.declare_parameter("confirm_center_radius_scale", 4.0)
+        self.declare_parameter("confirm_depth_absolute_m", 0.30)
+        self.declare_parameter("confirm_depth_relative", 0.30)
+        self.declare_parameter("confirm_radius_ratio_min", 0.45)
+        self.declare_parameter("confirm_radius_ratio_max", 2.20)
+
+        # 확정 뒤에는 예측 ROI를 먼저 검사한다. ROI에서 못 찾거나 직전 공과
+        # 일치하지 않으면 같은 프레임에서 전체 설정 ROI를 즉시 다시 검사하므로
+        # ROI 확대가 로봇 정지시간이나 프레임 대기를 추가하지 않는다.
+        self.declare_parameter("tracking_roi_enabled", True)
+        self.declare_parameter("tracking_roi_radius_scale", 4.0)
+        self.declare_parameter("tracking_roi_expansion_per_miss", 1.5)
+        self.declare_parameter("tracking_roi_min_half_size_px", 48.0)
         self.declare_parameter("realsense_hold_frames", 3)
+
+        # 15 FPS 프레임 간격은 약 0.067초이다. 0.1초 slop은 서로 인접한 다른
+        # 프레임을 짝지을 수 있어 기본 0.03초로 줄이고, 짧은 지연은 queue가
+        # 흡수하도록 한다.
+        self.declare_parameter("realsense_sync_queue", 5)
+        self.declare_parameter("realsense_sync_slop_sec", 0.03)
 
         # CameraInfo를 아직 받지 못했을 때 사용할 선배 코드의 기본 내부 파라미터
         self.declare_parameter("fallback_fx", 607.0)
@@ -389,11 +440,76 @@ class BallVisionFusionNode(Node):
         self.edge_max_aspect_ratio = float(
             self.get_parameter("edge_max_aspect_ratio").value
         )
-        self.depth_patch_radius = max(
-            0, int(self.get_parameter("depth_patch_radius").value)
+        self.depth_inner_radius_ratio = float(
+            self.get_parameter("depth_inner_radius_ratio").value
+        )
+        self.depth_min_valid_pixels = max(
+            1, int(self.get_parameter("depth_min_valid_pixels").value)
+        )
+        self.depth_min_valid_ratio = float(
+            self.get_parameter("depth_min_valid_ratio").value
+        )
+        self.support_score_weight = max(
+            0.0, float(self.get_parameter("support_score_weight").value)
+        )
+        self.confirmation_window_frames = max(
+            1,
+            int(self.get_parameter("confirmation_window_frames").value),
+        )
+        self.confirmation_required_hits = max(
+            1,
+            min(
+                self.confirmation_window_frames,
+                int(
+                    self.get_parameter(
+                        "confirmation_required_hits"
+                    ).value
+                ),
+            ),
+        )
+        self.ball_match_config = BallMatchConfig(
+            center_distance_px=float(
+                self.get_parameter("confirm_center_distance_px").value
+            ),
+            center_radius_scale=float(
+                self.get_parameter("confirm_center_radius_scale").value
+            ),
+            depth_absolute_m=float(
+                self.get_parameter("confirm_depth_absolute_m").value
+            ),
+            depth_relative=float(
+                self.get_parameter("confirm_depth_relative").value
+            ),
+            radius_ratio_min=float(
+                self.get_parameter("confirm_radius_ratio_min").value
+            ),
+            radius_ratio_max=float(
+                self.get_parameter("confirm_radius_ratio_max").value
+            ),
+        )
+        self.tracking_roi_enabled = bool(
+            self.get_parameter("tracking_roi_enabled").value
+        )
+        self.tracking_roi_radius_scale = float(
+            self.get_parameter("tracking_roi_radius_scale").value
+        )
+        self.tracking_roi_expansion_per_miss = float(
+            self.get_parameter(
+                "tracking_roi_expansion_per_miss"
+            ).value
+        )
+        self.tracking_roi_min_half_size_px = float(
+            self.get_parameter("tracking_roi_min_half_size_px").value
         )
         self.realsense_hold_frames = max(
             0, int(self.get_parameter("realsense_hold_frames").value)
+        )
+        self.realsense_sync_queue = max(
+            2, int(self.get_parameter("realsense_sync_queue").value)
+        )
+        self.realsense_sync_slop_sec = max(
+            0.0,
+            float(self.get_parameter("realsense_sync_slop_sec").value),
         )
 
         kernel_size = max(
@@ -475,6 +591,11 @@ class BallVisionFusionNode(Node):
         self.latest_realsense_time = 0.0
         self.last_realsense_detection: Optional[Dict[str, Any]] = None
         self.realsense_lost_frames = self.realsense_hold_frames
+        self.realsense_track_confirmed = False
+        self.realsense_track_velocity_px = (0.0, 0.0)
+        self.raw_detection_history = deque(
+            maxlen=self.confirmation_window_frames
+        )
 
         self.latest_webcam: Optional[Dict[str, Any]] = None
         self.latest_webcam_time = 0.0
@@ -484,6 +605,7 @@ class BallVisionFusionNode(Node):
         self.ball_in_hand = False
         self.frame_count = 0
         self.realsense_frame_count = 0
+        self.last_realsense_diagnostic_label: Optional[str] = None
         self.ball_detection_active = bool(
             self.get_parameter("active_on_start").value
         )
@@ -807,13 +929,71 @@ class BallVisionFusionNode(Node):
                 "support_sector_black_ratio_min",
                 "support_min_visible_fraction",
                 "edge_support_min_visible_fraction",
+                "depth_inner_radius_ratio", "depth_min_valid_ratio",
+                "support_score_weight", "tracking_roi_radius_scale",
+                "tracking_roi_expansion_per_miss",
+                "tracking_roi_min_half_size_px",
             }:
                 setattr(self, param.name, float(param.value))
             elif param.name in {
                 "support_v_max", "support_min_sectors",
                 "edge_support_min_sectors", "realsense_hold_frames",
+                "depth_min_valid_pixels",
             }:
                 setattr(self, param.name, int(param.value))
+            elif param.name == "tracking_roi_enabled":
+                self.tracking_roi_enabled = bool(param.value)
+            elif param.name in {
+                "confirmation_window_frames", "confirmation_required_hits",
+            }:
+                if param.name == "confirmation_window_frames":
+                    new_window = max(1, int(param.value))
+                    old_items = list(self.raw_detection_history)
+                    self.confirmation_window_frames = new_window
+                    self.raw_detection_history = deque(
+                        old_items[-new_window:],
+                        maxlen=new_window,
+                    )
+                else:
+                    self.confirmation_required_hits = max(
+                        1,
+                        min(
+                            self.confirmation_window_frames,
+                            int(param.value),
+                        ),
+                    )
+            elif param.name in {
+                "confirm_center_distance_px",
+                "confirm_center_radius_scale",
+                "confirm_depth_absolute_m",
+                "confirm_depth_relative",
+                "confirm_radius_ratio_min",
+                "confirm_radius_ratio_max",
+            }:
+                match_values = {
+                    "center_distance_px":
+                        self.ball_match_config.center_distance_px,
+                    "center_radius_scale":
+                        self.ball_match_config.center_radius_scale,
+                    "depth_absolute_m":
+                        self.ball_match_config.depth_absolute_m,
+                    "depth_relative":
+                        self.ball_match_config.depth_relative,
+                    "radius_ratio_min":
+                        self.ball_match_config.radius_ratio_min,
+                    "radius_ratio_max":
+                        self.ball_match_config.radius_ratio_max,
+                }
+                config_name = {
+                    "confirm_center_distance_px": "center_distance_px",
+                    "confirm_center_radius_scale": "center_radius_scale",
+                    "confirm_depth_absolute_m": "depth_absolute_m",
+                    "confirm_depth_relative": "depth_relative",
+                    "confirm_radius_ratio_min": "radius_ratio_min",
+                    "confirm_radius_ratio_max": "radius_ratio_max",
+                }[param.name]
+                match_values[config_name] = float(param.value)
+                self.ball_match_config = BallMatchConfig(**match_values)
             elif param.name == "debug_publish_every_n_frames":
                 self.debug_publish_every_n_frames = max(
                     1,
@@ -843,8 +1023,8 @@ class BallVisionFusionNode(Node):
         )
         self.rs_sync = ApproximateTimeSynchronizer(
             [self.rs_color_sub, self.rs_depth_sub],
-            queue_size=2,
-            slop=0.1,
+            queue_size=self.realsense_sync_queue,
+            slop=self.realsense_sync_slop_sec,
         )
         self.rs_sync.registerCallback(self.cb_realsense_images)
 
@@ -853,6 +1033,9 @@ class BallVisionFusionNode(Node):
         self.latest_realsense_time = 0.0
         self.last_realsense_detection = None
         self.realsense_lost_frames = self.realsense_hold_frames
+        self.realsense_track_confirmed = False
+        self.realsense_track_velocity_px = (0.0, 0.0)
+        self.raw_detection_history.clear()
         self.latest_webcam = None
         self.latest_webcam_time = 0.0
 
@@ -865,8 +1048,7 @@ class BallVisionFusionNode(Node):
         # 이미 큐에 들어온 콜백도 초입의 active 검사에서 즉시 반환한다.
         self.ball_detection_active = requested
         self._clear_ball_detection_state()
-        if requested:
-            self.ball_status_publisher._reset_webcam_detection_cycle()
+        self.ball_status_publisher.set_detection_enabled(requested)
 
         self.get_logger().info(
             "Ball image processing switched "
@@ -879,7 +1061,8 @@ class BallVisionFusionNode(Node):
         *,
         force: bool = False,
     ) -> bool:
-        """vision 내부에서 공과 hoop 처리 모드를 전환한다.
+        """
+        Vision 내부에서 공과 hoop 처리 모드를 전환한다.
 
         RealSense 카메라와 두 동기화 구독은 계속 유지한다. 확정된 공 소유
         상태에 맞는 OpenCV 콜백만 활성화하며, 두 검출기가 전환 순간 함께
@@ -993,97 +1176,77 @@ class BallVisionFusionNode(Node):
             )
             return
 
-        x_start = int(frame_w * self.rs_roi_left_ratio)
-        x_end = int(frame_w * self.rs_roi_right_ratio)
-        y_start = int(frame_h * self.rs_roi_top_ratio)
-        y_end = int(frame_h * self.rs_roi_bottom_ratio)
+        full_roi = self._configured_realsense_roi(frame_w, frame_h)
+        search_roi = full_roi
+        used_tracking_roi = False
 
-        x_start = max(0, min(x_start, frame_w - 1))
-        x_end = max(x_start + 1, min(x_end, frame_w))
-        y_start = max(0, min(y_start, frame_h - 1))
-        y_end = max(y_start + 1, min(y_end, frame_h))
-
-        roi_color = frame[y_start:y_end, x_start:x_end]
-        roi_depth = depth[y_start:y_end, x_start:x_end]
-
-        hsv = cv2.cvtColor(roi_color, cv2.COLOR_BGR2HSV)
-        ball_color_mask = cv2.inRange(
-            hsv,
-            self.lower_hsv,
-            self.upper_hsv,
-        )
-        floor_mask = hsv_range_mask(
-            hsv,
-            (
-                self.floor_h_low,
-                self.floor_s_low,
-                self.floor_v_low,
-            ),
-            (
-                self.floor_h_high,
-                self.floor_s_high,
-                self.floor_v_high,
-            ),
-        )
-
-        # depth가 0이거나 비정상이거나 설정 거리보다 먼 픽셀은 제거한다.
-        roi_depth_m = roi_depth * self.depth_scale
-        invalid_depth = (
-            ~np.isfinite(roi_depth_m)
-            | (roi_depth_m <= 0.0)
-            | (roi_depth_m > self.depth_threshold_m)
-        )
-        depth_filtered_mask = ball_color_mask.copy()
-        depth_filtered_mask[invalid_depth] = 0
-
-        mask = cv2.morphologyEx(
-            depth_filtered_mask,
-            cv2.MORPH_CLOSE,
-            self.kernel,
-        )
-        mask = cv2.morphologyEx(
-            mask,
-            cv2.MORPH_OPEN,
-            self.kernel,
-        )
-
-        detection = self._find_best_ball(
-            mask=mask,
-            hsv=hsv,
-            ball_color_mask=ball_color_mask,
-            floor_mask=floor_mask,
-            depth=depth,
-            roi_x_start=x_start,
-            roi_y_start=y_start,
-            frame_w=frame_w,
-            frame_h=frame_h,
-        )
-
-        held_previous = False
-
-        if detection is not None:
-            self.realsense_lost_frames = 0
-            self.last_realsense_detection = dict(detection)
-            self.latest_realsense = dict(detection)
-            self.latest_realsense_time = now
-
-        elif (
-            self.last_realsense_detection is not None
-            and self.realsense_lost_frames < self.realsense_hold_frames
+        # TRACK에서는 직전 위치와 속도로 예측한 작은 ROI를 먼저 처리한다.
+        # ROI가 실패하거나 다른 주황색 물체를 잡으면 아래에서 *같은 콜백,
+        # 같은 프레임*의 전체 설정 ROI를 즉시 처리한다. Timer/sleep/정지 모션은
+        # 전혀 없으므로 ROI 확대 때문에 로봇 대기시간이 길어지지 않는다.
+        if (
+            self.tracking_roi_enabled
+            and self.realsense_track_confirmed
+            and self.last_realsense_detection is not None
         ):
-            # 선배 코드처럼 짧은 미검출은 직전 위치를 유지한다.
-            self.realsense_lost_frames += 1
-            held_previous = True
-            self.latest_realsense = dict(
-                self.last_realsense_detection
+            predicted_roi = expanded_tracking_roi(
+                frame_width=frame_w,
+                frame_height=frame_h,
+                detection=self.last_realsense_detection,
+                velocity_px=self.realsense_track_velocity_px,
+                missed_frames=self.realsense_lost_frames,
+                radius_scale=self.tracking_roi_radius_scale,
+                expansion_per_miss=(
+                    self.tracking_roi_expansion_per_miss
+                ),
+                minimum_half_size_px=(
+                    self.tracking_roi_min_half_size_px
+                ),
             )
-            self.latest_realsense["held_previous_detection"] = True
-            self.latest_realsense_time = now
+            search_roi = self._intersect_rois(predicted_roi, full_roi)
+            used_tracking_roi = search_roi != full_roi
 
-        else:
-            self.realsense_lost_frames = self.realsense_hold_frames
-            self.latest_realsense = self._empty_realsense_state()
-            self.latest_realsense_time = now
+        (
+            detection,
+            rejection_diagnostic,
+            ball_color_mask,
+            mask,
+        ) = self._detect_ball_in_roi(frame, depth, search_roi)
+
+        roi_candidate_matches_track = bool(
+            detection is not None
+            and self.last_realsense_detection is not None
+            and same_ball_candidate(
+                self.last_realsense_detection,
+                detection,
+                self.ball_match_config,
+            )
+        )
+        if used_tracking_roi and (
+            detection is None or not roi_candidate_matches_track
+        ):
+            # ROI 밖으로 크게 튄 실제 공을 놓치지 않도록 같은 프레임에서 즉시
+            # 전체 화면 fallback을 한다. 이 동작은 계산량만 조금 늘리고 검출
+            # 결과를 기다리는 프레임 수나 정지시간은 늘리지 않는다.
+            (
+                full_detection,
+                full_diagnostic,
+                full_color_mask,
+                full_mask,
+            ) = self._detect_ball_in_roi(frame, depth, full_roi)
+            search_roi = full_roi
+            ball_color_mask = full_color_mask
+            mask = full_mask
+            if full_detection is not None:
+                detection = full_detection
+            rejection_diagnostic = full_diagnostic
+
+        held_previous = self._update_realsense_tracking(
+            detection=detection,
+            rejection_diagnostic=rejection_diagnostic,
+            now=now,
+        )
+        x_start, y_start, x_end, y_end = search_roi
 
         self.realsense_frame_count += 1
         publish_debug_now = (
@@ -1114,6 +1277,370 @@ class BallVisionFusionNode(Node):
                 cv2.imshow("Ball RealSense OpenCV", debug)
                 cv2.waitKey(1)
 
+    def _configured_realsense_roi(
+        self,
+        frame_width: int,
+        frame_height: int,
+    ) -> Tuple[int, int, int, int]:
+        """설정 비율을 안전한 전체 SEARCH ROI 픽셀 좌표로 바꾼다."""
+        x1 = int(frame_width * self.rs_roi_left_ratio)
+        x2 = int(frame_width * self.rs_roi_right_ratio)
+        y1 = int(frame_height * self.rs_roi_top_ratio)
+        y2 = int(frame_height * self.rs_roi_bottom_ratio)
+        x1 = max(0, min(x1, frame_width - 1))
+        x2 = max(x1 + 1, min(x2, frame_width))
+        y1 = max(0, min(y1, frame_height - 1))
+        y2 = max(y1 + 1, min(y2, frame_height))
+        return (x1, y1, x2, y2)
+
+    @staticmethod
+    def _intersect_rois(
+        first: Tuple[int, int, int, int],
+        second: Tuple[int, int, int, int],
+    ) -> Tuple[int, int, int, int]:
+        """TRACK ROI가 사용자가 설정한 SEARCH ROI를 벗어나지 않게 한다."""
+        x1 = max(first[0], second[0])
+        y1 = max(first[1], second[1])
+        x2 = min(first[2], second[2])
+        y2 = min(first[3], second[3])
+        if x2 <= x1 or y2 <= y1:
+            return second
+        return (x1, y1, x2, y2)
+
+    def _detect_ball_in_roi(
+        self,
+        frame: np.ndarray,
+        depth: np.ndarray,
+        roi: Tuple[int, int, int, int],
+    ) -> Tuple[
+        Optional[Dict[str, Any]],
+        Dict[str, Any],
+        np.ndarray,
+        np.ndarray,
+    ]:
+        """
+        한 ROI에서 원본 공 후보 하나를 찾는다.
+
+        형상용 ``mask``는 의도적으로 HSV만 사용한다. 이전 구현처럼 유효하지
+        않은 depth 픽셀을 먼저 0으로 만들면 공 표면의 depth hole이 색상 윤곽을
+        찢고, 그 결과 실제 공이 circularity/area에서 탈락한다. depth는 윤곽을
+        찾은 뒤 각 후보의 안쪽 50% 영역에서 별도로 검증한다.
+        """
+        x1, y1, x2, y2 = roi
+        roi_color = frame[y1:y2, x1:x2]
+        roi_depth = depth[y1:y2, x1:x2]
+        hsv = cv2.cvtColor(roi_color, cv2.COLOR_BGR2HSV)
+        ball_color_mask = cv2.inRange(
+            hsv,
+            self.lower_hsv,
+            self.upper_hsv,
+        )
+        floor_mask = hsv_range_mask(
+            hsv,
+            (
+                self.floor_h_low,
+                self.floor_s_low,
+                self.floor_v_low,
+            ),
+            (
+                self.floor_h_high,
+                self.floor_s_high,
+                self.floor_v_high,
+            ),
+        )
+
+        # 이 depth-filtered 마스크는 진단 수치에만 사용한다. 아래 morphology의
+        # 입력은 ball_color_mask이므로 depth 결손이 공 형상을 훼손하지 않는다.
+        roi_depth_m = roi_depth * self.depth_scale
+        valid_depth = (
+            np.isfinite(roi_depth_m)
+            & (roi_depth_m > 0.0)
+            & (roi_depth_m <= self.depth_threshold_m)
+        )
+        depth_filtered_mask = np.zeros_like(ball_color_mask)
+        depth_filtered_mask[
+            (ball_color_mask > 0) & valid_depth
+        ] = 255
+
+        mask = cv2.morphologyEx(
+            ball_color_mask,
+            cv2.MORPH_CLOSE,
+            self.kernel,
+        )
+        mask = cv2.morphologyEx(
+            mask,
+            cv2.MORPH_OPEN,
+            self.kernel,
+        )
+
+        rejection_counts: Dict[str, int] = {}
+        detection = self._find_best_ball(
+            mask=mask,
+            hsv=hsv,
+            ball_color_mask=ball_color_mask,
+            floor_mask=floor_mask,
+            depth=depth,
+            roi_x_start=x1,
+            roi_y_start=y1,
+            frame_w=frame.shape[1],
+            frame_h=frame.shape[0],
+            rejection_counts=rejection_counts,
+        )
+        diagnostic = self._classify_realsense_rejection(
+            ball_color_mask=ball_color_mask,
+            roi_depth_m=roi_depth_m,
+            depth_filtered_mask=depth_filtered_mask,
+            rejection_counts=rejection_counts,
+        )
+        return detection, diagnostic, ball_color_mask, mask
+
+    def _confirmation_hits(self, candidate: Dict[str, Any]) -> int:
+        """최근 원본 창에서 현재 후보와 같은 공으로 보이는 개수를 센다."""
+        return sum(
+            1
+            for previous in self.raw_detection_history
+            if previous is not None
+            and same_ball_candidate(
+                previous,
+                candidate,
+                self.ball_match_config,
+            )
+        )
+
+    def _accept_confirmed_detection(
+        self,
+        detection: Dict[str, Any],
+        *,
+        detail: str,
+        now: float,
+    ) -> None:
+        """원본 검출만 TRACK 상태와 행동 입력으로 승격한다."""
+        previous = self.last_realsense_detection
+        if previous is not None:
+            dx = float(detection["raw_ball_x"]) - float(
+                previous["raw_ball_x"]
+            )
+            dy = float(detection["raw_ball_y"]) - float(
+                previous["raw_ball_y"]
+            )
+            # 한 프레임의 튐을 그대로 예측에 쓰지 않도록 간단한 EMA를 적용한다.
+            old_vx, old_vy = self.realsense_track_velocity_px
+            self.realsense_track_velocity_px = (
+                0.5 * old_vx + 0.5 * dx,
+                0.5 * old_vy + 0.5 * dy,
+            )
+        else:
+            self.realsense_track_velocity_px = (0.0, 0.0)
+
+        accepted = dict(detection)
+        accepted["held_previous_detection"] = False
+        accepted["realsense_diagnostic"] = {
+            "category": "accepted",
+            "detail": detail,
+        }
+        self.realsense_track_confirmed = True
+        self.realsense_lost_frames = 0
+        self.last_realsense_detection = dict(accepted)
+        self.latest_realsense = accepted
+        self.latest_realsense_time = now
+
+    def _update_realsense_tracking(
+        self,
+        *,
+        detection: Optional[Dict[str, Any]],
+        rejection_diagnostic: Dict[str, Any],
+        now: float,
+    ) -> bool:
+        """
+        SEARCH의 2/3 확정, TRACK 갱신, 표시 전용 HELD를 관리한다.
+
+        반환값은 디버그 화면에 HOLD를 그릴지 여부이다. HELD 상태는 직전 좌표를
+        화면과 다음 ROI 예측에만 보존하며 ``realsense_ball_detected=False``로
+        강제한다. 따라서 복사 프레임이 신규 투표나 실제 행동 근거가 될 수 없다.
+        """
+        if detection is not None and self.realsense_track_confirmed:
+            if (
+                self.last_realsense_detection is not None
+                and same_ball_candidate(
+                    self.last_realsense_detection,
+                    detection,
+                    self.ball_match_config,
+                )
+            ):
+                self.raw_detection_history.clear()
+                self.raw_detection_history.append(dict(detection))
+                self._accept_confirmed_detection(
+                    detection,
+                    detail="tracked_raw_detection",
+                    now=now,
+                )
+                return False
+            # TRACK ROI/전체 fallback이 다른 주황색 후보를 잡은 경우이다. 기존
+            # 공을 즉시 바꿔치기하지 않고 한 번의 미검출처럼 처리한다.
+            rejection_diagnostic = {
+                "category": "pending",
+                "detail": "raw_candidate_did_not_match_confirmed_track",
+            }
+            detection = None
+
+        if detection is not None:
+            # SEARCH 또는 완전 분실 후 재검색. deque에는 HELD가 아니라 실제
+            # 카메라 콜백에서 새로 계산된 원본 후보/None만 들어간다.
+            self.raw_detection_history.append(dict(detection))
+            hits = self._confirmation_hits(detection)
+            if hits >= self.confirmation_required_hits:
+                self._accept_confirmed_detection(
+                    detection,
+                    detail=(
+                        f"confirmed_{hits}_of_"
+                        f"{self.confirmation_window_frames}_raw"
+                    ),
+                    now=now,
+                )
+            else:
+                pending = self._empty_realsense_state()
+                pending["realsense_diagnostic"] = {
+                    "category": "pending",
+                    "detail": (
+                        f"raw_confirmation_{hits}_of_"
+                        f"{self.confirmation_required_hits}"
+                    ),
+                }
+                self.latest_realsense = pending
+                self.latest_realsense_time = now
+            return False
+
+        if not self.realsense_track_confirmed:
+            self.raw_detection_history.append(None)
+            empty = self._empty_realsense_state()
+            empty["realsense_diagnostic"] = rejection_diagnostic
+            self.latest_realsense = empty
+            self.latest_realsense_time = now
+            return False
+
+        self.realsense_lost_frames += 1
+        if (
+            self.last_realsense_detection is not None
+            and self.realsense_lost_frames <= self.realsense_hold_frames
+        ):
+            held = dict(self.last_realsense_detection)
+            # 가장 중요한 안전 조건: 표시/ROI용 복사본은 검출 true가 아니다.
+            held["realsense_ball_detected"] = False
+            held["held_previous_detection"] = True
+            held["realsense_diagnostic"] = {
+                "category": "held",
+                "detail": (
+                    f"display_only_after_{rejection_diagnostic['category']}:"
+                    f"{rejection_diagnostic['detail']}"
+                ),
+            }
+            self.latest_realsense = held
+            self.latest_realsense_time = now
+            return True
+
+        # 설정 횟수보다 오래 원본을 못 찾았을 때만 TRACK을 해제한다. 다음
+        # 프레임은 전체 SEARCH ROI에서 시작하며 다시 2/3 원본 확인을 거친다.
+        self.realsense_track_confirmed = False
+        self.realsense_track_velocity_px = (0.0, 0.0)
+        self.last_realsense_detection = None
+        self.raw_detection_history.clear()
+        empty = self._empty_realsense_state()
+        empty["realsense_diagnostic"] = rejection_diagnostic
+        self.latest_realsense = empty
+        self.latest_realsense_time = now
+        return False
+
+    def _classify_realsense_rejection(
+        self,
+        *,
+        ball_color_mask: np.ndarray,
+        roi_depth_m: np.ndarray,
+        depth_filtered_mask: np.ndarray,
+        rejection_counts: Dict[str, int],
+    ) -> Dict[str, Any]:
+        """Return the furthest detector stage reached by this frame."""
+        color_region = ball_color_mask > 0
+        hsv_pixels = int(np.count_nonzero(color_region))
+        depth_filtered_pixels = int(
+            np.count_nonzero(depth_filtered_mask)
+        )
+        color_depth = roi_depth_m[color_region]
+        finite_positive = color_depth[
+            np.isfinite(color_depth) & (color_depth > 0.0)
+        ]
+        valid_depth_pixels = int(
+            np.count_nonzero(
+                finite_positive <= self.depth_threshold_m
+            )
+        )
+        over_distance_pixels = int(
+            np.count_nonzero(
+                finite_positive > self.depth_threshold_m
+            )
+        )
+
+        metrics = {
+            "hsv_pixels": hsv_pixels,
+            "valid_depth_pixels": valid_depth_pixels,
+            "over_distance_pixels": over_distance_pixels,
+            "depth_filtered_pixels": depth_filtered_pixels,
+            "rejection_counts": dict(sorted(rejection_counts.items())),
+        }
+
+        def diagnostic(category: str, detail: str) -> Dict[str, Any]:
+            return {
+                "category": category,
+                "detail": detail,
+                **metrics,
+            }
+
+        if hsv_pixels == 0:
+            return diagnostic("hsv", "no_pixels_in_hsv_range")
+        if finite_positive.size == 0:
+            return diagnostic("depth", "no_finite_positive_depth")
+        if valid_depth_pixels == 0 and over_distance_pixels > 0:
+            return diagnostic(
+                "distance",
+                f"all_hsv_pixels_over_{self.depth_threshold_m:.2f}m",
+            )
+        if depth_filtered_pixels == 0:
+            return diagnostic("depth", "no_depth_valid_hsv_pixels")
+
+        def most_common(prefix: str) -> Optional[str]:
+            matches = [
+                (reason, count)
+                for reason, count in rejection_counts.items()
+                if reason.startswith(prefix)
+            ]
+            if not matches:
+                return None
+            return max(matches, key=lambda item: item[1])[0]
+
+        support_reason = most_common("support:")
+        if support_reason is not None:
+            return diagnostic("support", support_reason.split(":", 1)[1])
+        if rejection_counts.get("depth_inner_region_invalid", 0) > 0:
+            return diagnostic("depth", "candidate_inner_depth_invalid")
+        if rejection_counts.get("physical_size", 0) > 0:
+            return diagnostic("shape", "depth_size_mismatch")
+
+        shape_reasons = (
+            "circle_fill",
+            "circularity",
+            "aspect_ratio",
+            "invalid_radius",
+            "invalid_perimeter",
+            "contour_area",
+            "no_contour_after_morphology",
+        )
+        selected_shape = max(
+            shape_reasons,
+            key=lambda reason: rejection_counts.get(reason, 0),
+        )
+        if rejection_counts.get(selected_shape, 0) > 0:
+            return diagnostic("shape", selected_shape)
+        return diagnostic("shape", "no_accepted_candidate")
+
     def _find_best_ball(
         self,
         mask: np.ndarray,
@@ -1125,6 +1652,7 @@ class BallVisionFusionNode(Node):
         roi_y_start: int,
         frame_w: int,
         frame_h: int,
+        rejection_counts: Optional[Dict[str, int]] = None,
     ) -> Optional[Dict[str, Any]]:
         """검은 받침대 위에 있는 물리적으로 타당한 주황색 공을 찾는다."""
         contours, _ = cv2.findContours(
@@ -1134,6 +1662,15 @@ class BallVisionFusionNode(Node):
         )
 
         best: Optional[Dict[str, Any]] = None
+
+        def rejected(reason: str) -> None:
+            if rejection_counts is None:
+                return
+            rejection_counts[reason] = rejection_counts.get(reason, 0) + 1
+
+        if not contours:
+            rejected("no_contour_after_morphology")
+
         support_config = self._support_config()
         support_black_mask = black_support_mask(
             hsv,
@@ -1156,6 +1693,7 @@ class BallVisionFusionNode(Node):
             if touches_edge:
                 min_area *= self.edge_min_contour_area_ratio
             if area < min_area:
+                rejected("contour_area")
                 continue
 
             aspect_ratio = float(bw) / max(float(bh), 1.0)
@@ -1168,10 +1706,12 @@ class BallVisionFusionNode(Node):
                 else self.max_aspect_ratio
             )
             if not (min_aspect <= aspect_ratio <= max_aspect):
+                rejected("aspect_ratio")
                 continue
 
             perimeter = float(cv2.arcLength(contour, True))
             if perimeter <= 1e-6:
+                rejected("invalid_perimeter")
                 continue
             circularity = 4.0 * math.pi * area / (perimeter * perimeter)
             required_circularity = (
@@ -1179,10 +1719,12 @@ class BallVisionFusionNode(Node):
                 else self.min_circularity
             )
             if circularity < required_circularity:
+                rejected("circularity")
                 continue
 
             (cx_roi, cy_roi), radius = cv2.minEnclosingCircle(contour)
             if radius <= 1e-6:
+                rejected("invalid_radius")
                 continue
 
             circle_area = math.pi * radius * radius
@@ -1194,18 +1736,20 @@ class BallVisionFusionNode(Node):
                 else self.max_circle_ratio_error
             )
             if ratio_error > max_ratio_error:
+                rejected("circle_fill")
                 continue
 
             cx_img = int(round(cx_roi + roi_x_start))
             cy_img = int(round(cy_roi + roi_y_start))
-            z_m = self._read_depth_m(
+            depth_sample = self._read_depth_m(
                 depth=depth,
                 cx=cx_img,
                 cy=cy_img,
-                frame_w=frame_w,
-                frame_h=frame_h,
+                detected_radius_px=float(radius),
             )
+            z_m = depth_sample.depth_m
             if z_m is None or self.fx <= 0.0:
+                rejected("depth_inner_region_invalid")
                 continue
 
             expected_radius_min = (
@@ -1225,6 +1769,7 @@ class BallVisionFusionNode(Node):
             allowed_radius_min = expected_radius_min * size_min_ratio
             allowed_radius_max = expected_radius_max * size_max_ratio
             if not (allowed_radius_min <= radius <= allowed_radius_max):
+                rejected("physical_size")
                 continue
 
             expected_radius_mid = 0.5 * (
@@ -1245,16 +1790,13 @@ class BallVisionFusionNode(Node):
                 config=support_config,
                 black_mask=support_black_mask,
             )
-            if not bool(support["accepted"]):
-                continue
+            support_confidence = ball_support_confidence(support)
 
             score = (
                 ratio_error
                 + (1.0 - min(circularity, 1.0))
                 + size_error
-                + 0.5 * (1.0 - float(support["black_ratio"]))
-                + float(support["surrounding_ball_ratio"])
-                + float(support["floor_ratio"])
+                + self.support_score_weight * (1.0 - support_confidence)
             )
 
             candidate = {
@@ -1269,6 +1811,8 @@ class BallVisionFusionNode(Node):
                 "radius_ratio": float(radius_ratio),
                 "touches_edge": touches_edge,
                 "support": support,
+                "support_confidence": float(support_confidence),
+                "depth_sample": depth_sample,
             }
             if best is None or score < float(best["score"]):
                 best = candidate
@@ -1285,6 +1829,8 @@ class BallVisionFusionNode(Node):
         aspect_ratio = float(best["aspect_ratio"])
         radius_ratio = float(best["radius_ratio"])
         support = best["support"]
+        support_confidence = float(best["support_confidence"])
+        depth_sample: BallDepthSample = best["depth_sample"]
         circle_area = math.pi * radius * radius
         ratio_error = abs((area / circle_area) - 1.0)
         cx_img = int(round(cx_roi + roi_x_start))
@@ -1329,6 +1875,17 @@ class BallVisionFusionNode(Node):
                 support["visible_fraction"]
             ),
             "raw_support_outer_radius": float(support["outer_radius_px"]),
+            "raw_support_passed": bool(support["accepted"]),
+            "raw_support_reason": str(support["reason"]),
+            "raw_support_confidence": support_confidence,
+            "raw_depth_valid_pixels": int(depth_sample.valid_pixels),
+            "raw_depth_sample_pixels": int(depth_sample.sample_pixels),
+            "raw_depth_valid_ratio": float(depth_sample.valid_ratio),
+            "raw_depth_mad_m": (
+                float(depth_sample.median_absolute_deviation_m)
+                if depth_sample.median_absolute_deviation_m is not None
+                else None
+            ),
             "held_previous_detection": False,
         }
 
@@ -1337,32 +1894,25 @@ class BallVisionFusionNode(Node):
         depth: np.ndarray,
         cx: int,
         cy: int,
-        frame_w: int,
-        frame_h: int,
-    ) -> Optional[float]:
-        radius = self.depth_patch_radius
+        detected_radius_px: float,
+    ) -> BallDepthSample:
+        """
+        공 안쪽 영역의 깊이와 유효 픽셀 통계를 반환한다.
 
-        x1 = max(0, cx - radius)
-        x2 = min(frame_w, cx + radius + 1)
-        y1 = max(0, cy - radius)
-        y2 = min(frame_h, cy + radius + 1)
-
-        patch = depth[y1:y2, x1:x2]
-        if patch.size == 0:
-            return None
-
-        patch_m = patch.astype(np.float32) * self.depth_scale
-        valid = patch_m[
-            np.isfinite(patch_m)
-            & (patch_m > 0.0)
-            & (patch_m <= self.depth_threshold_m)
-        ]
-
-        if valid.size == 0:
-            return None
-
-        # 평균보다 outlier에 강한 median 사용
-        return float(np.median(valid))
+        ``depth_inner_radius_ratio`` 기본 0.50은 쉽게 현장 조정할 수 있도록
+        파라미터로 노출되어 있다. 상세한 조정 기준과 수학적 영역 정의는
+        ``ball_detector_core.sample_ball_inner_depth`` 주석을 참고한다.
+        """
+        return sample_ball_inner_depth(
+            depth=depth,
+            center=(float(cx), float(cy)),
+            detected_radius_px=float(detected_radius_px),
+            depth_scale=self.depth_scale,
+            depth_max_m=self.depth_threshold_m,
+            inner_radius_ratio=self.depth_inner_radius_ratio,
+            min_valid_pixels=self.depth_min_valid_pixels,
+            min_valid_ratio=self.depth_min_valid_ratio,
+        )
 
     def _draw_realsense_debug(
         self,
@@ -1388,9 +1938,13 @@ class BallVisionFusionNode(Node):
             2,
         )
 
-        draw_state = detection
-        if draw_state is None and held_previous:
-            draw_state = self.last_realsense_detection
+        # HOLD 중에는 ROI fallback에서 우연히 찾은 다른 주황색 후보가 아니라
+        # 마지막으로 확정된 공 위치를 노란색으로 표시한다.
+        draw_state = (
+            self.last_realsense_detection
+            if held_previous
+            else detection
+        )
 
         if draw_state is not None:
             cx = int(round(draw_state["raw_ball_x"]))
@@ -1417,14 +1971,16 @@ class BallVisionFusionNode(Node):
                 f"{draw_state['realsense_ball_angle_error']:+.1f}deg"
             )
             support_text = (
-                f"support black={draw_state['raw_support_black_ratio']:.2f} "
+                f"support score={draw_state['raw_support_confidence']:.2f} "
+                f"pass={int(draw_state['raw_support_passed'])} "
+                f"black={draw_state['raw_support_black_ratio']:.2f} "
                 f"floor={draw_state['raw_support_floor_ratio']:.2f} "
-                f"orange={draw_state['raw_support_ball_color_ratio']:.2f} "
-                f"sectors={draw_state['raw_support_sectors']}"
+                f"sectors={draw_state['raw_support_sectors']} "
+                f"depth_ok={draw_state['raw_depth_valid_ratio']:.2f}"
             )
         else:
             text = "BALL MISS"
-            support_text = "support required for every RealSense ball"
+            support_text = "support is an auxiliary candidate score"
 
         cv2.putText(
             debug,
@@ -1507,7 +2063,18 @@ class BallVisionFusionNode(Node):
             "raw_support_sectors": None,
             "raw_support_visible_fraction": None,
             "raw_support_outer_radius": None,
+            "raw_support_passed": False,
+            "raw_support_reason": None,
+            "raw_support_confidence": None,
+            "raw_depth_valid_pixels": 0,
+            "raw_depth_sample_pixels": 0,
+            "raw_depth_valid_ratio": 0.0,
+            "raw_depth_mad_m": None,
             "held_previous_detection": False,
+            "realsense_diagnostic": {
+                "category": "waiting",
+                "detail": "no_realsense_frame",
+            },
         }
 
     # =============================================================
@@ -1695,6 +2262,132 @@ class BallVisionFusionNode(Node):
     # =============================================================
     # BallFeatures 생성 및 알고리즘 전달
     # =============================================================
+    def _published_realsense_diagnostic(
+        self,
+        *,
+        realsense_valid: bool,
+        realsense_age: Optional[float],
+        features: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Add the 120 cm mission gate to the detector-stage diagnosis."""
+        if not self.ball_detection_active:
+            return {
+                "category": "inactive",
+                "detail": "ball_processing_disabled",
+            }
+
+        if realsense_valid:
+            distance_cm = features.get("realsense_ball_distance_cm")
+            entry_cm = float(
+                self.ball_status_publisher.ball_decision.ball_entry_distance_cm
+            )
+            if (
+                not features.get("ball_in_hand", False)
+                and distance_cm is not None
+                and float(distance_cm) > entry_cm
+            ):
+                return {
+                    "category": "distance",
+                    "detail": (
+                        f"ball_entry_gate_{float(distance_cm):.1f}cm"
+                        f">{entry_cm:.1f}cm"
+                    ),
+                    "distance_cm": float(distance_cm),
+                    "limit_cm": entry_cm,
+                }
+
+            if self.latest_realsense is not None:
+                return dict(
+                    self.latest_realsense.get(
+                        "realsense_diagnostic",
+                        {
+                            "category": "accepted",
+                            "detail": "detector_passed",
+                        },
+                    )
+                )
+
+        if (
+            realsense_age is not None
+            and realsense_age > self.realsense_timeout_sec
+        ):
+            return {
+                "category": "timeout",
+                "detail": f"last_frame_age_{realsense_age:.2f}s",
+            }
+
+        if self.latest_realsense is not None:
+            return dict(
+                self.latest_realsense.get(
+                    "realsense_diagnostic",
+                    {
+                        "category": "waiting",
+                        "detail": "no_diagnostic",
+                    },
+                )
+            )
+        return {
+            "category": "waiting",
+            "detail": "no_realsense_frame",
+        }
+
+    @staticmethod
+    def _format_realsense_diagnostic(diagnostic: Dict[str, Any]) -> str:
+        category = str(diagnostic.get("category", "unknown"))
+        detail = str(diagnostic.get("detail", "unknown"))
+        labels = {
+            "accepted": "ACCEPTED",
+            "held": "HELD",
+            "hsv": "REJECT_HSV",
+            "depth": "REJECT_DEPTH",
+            "distance": "REJECT_DISTANCE",
+            "shape": "REJECT_SHAPE",
+            "support": "REJECT_SUPPORT",
+            "timeout": "REJECT_TIMEOUT",
+            "pending": "PENDING_RAW_CONFIRMATION",
+            "inactive": "INACTIVE",
+            "waiting": "WAITING",
+        }
+        return f"{labels.get(category, category.upper())}:{detail}"
+
+    def _log_realsense_diagnostic_transition(
+        self,
+        diagnostic: Dict[str, Any],
+    ) -> bool:
+        """Log each detector rejection transition once without frame spam."""
+        label = BallVisionFusionNode._format_realsense_diagnostic(
+            diagnostic
+        )
+        if label == getattr(
+            self,
+            "last_realsense_diagnostic_label",
+            None,
+        ):
+            return False
+
+        self.last_realsense_diagnostic_label = label
+        metric_parts = []
+        metric_names = (
+            "hsv_pixels",
+            "valid_depth_pixels",
+            "over_distance_pixels",
+            "depth_filtered_pixels",
+            "distance_cm",
+            "limit_cm",
+        )
+        for name in metric_names:
+            if name in diagnostic:
+                metric_parts.append(f"{name}={diagnostic[name]}")
+        rejection_counts = diagnostic.get("rejection_counts")
+        if rejection_counts:
+            metric_parts.append(f"filters={rejection_counts}")
+
+        suffix = f" ({', '.join(metric_parts)})" if metric_parts else ""
+        self.get_logger().info(
+            f"[RealSenseBallDiagnostic] {label}{suffix}"
+        )
+        return True
+
     def publish_ball_features(self) -> None:
         now = time.monotonic()
 
@@ -1808,6 +2501,13 @@ class BallVisionFusionNode(Node):
                 }
             )
 
+        realsense_diagnostic = self._published_realsense_diagnostic(
+            realsense_valid=realsense_valid,
+            realsense_age=realsense_age,
+            features=features,
+        )
+        self._log_realsense_diagnostic_transition(realsense_diagnostic)
+
         status, angle = (
             self.ball_status_publisher.publish_ball_status(
                 **features
@@ -1837,6 +2537,7 @@ class BallVisionFusionNode(Node):
                 "ball_status": int(status),
                 "ball_status_angle": float(angle),
                 "camera_info_received": self.camera_info_received,
+                "realsense_diagnostic": realsense_diagnostic,
             }
         )
 
@@ -1880,6 +2581,20 @@ class BallVisionFusionNode(Node):
                     self.latest_realsense[
                         "raw_support_visible_fraction"
                     ],
+                "support_passed":
+                    self.latest_realsense["raw_support_passed"],
+                "support_reason":
+                    self.latest_realsense["raw_support_reason"],
+                "support_confidence":
+                    self.latest_realsense["raw_support_confidence"],
+                "depth_valid_pixels":
+                    self.latest_realsense["raw_depth_valid_pixels"],
+                "depth_sample_pixels":
+                    self.latest_realsense["raw_depth_sample_pixels"],
+                "depth_valid_ratio":
+                    self.latest_realsense["raw_depth_valid_ratio"],
+                "depth_mad_m":
+                    self.latest_realsense["raw_depth_mad_m"],
                 "held_previous_detection":
                     self.latest_realsense[
                         "held_previous_detection"
@@ -1908,6 +2623,8 @@ class BallVisionFusionNode(Node):
                 f"rs={features['realsense_ball_detected']} "
                 f"rs_dist={features['realsense_ball_distance_cm']} "
                 f"rs_ang={features['realsense_ball_angle_error']} "
+                "rs_diag="
+                f"{self._format_realsense_diagnostic(realsense_diagnostic)} "
                 f"webcam={features['webcam_ball_detected']} "
                 f"webcam_x={features['webcam_ball_x_distance']} "
                 f"webcam_y={features['webcam_ball_y_distance']} "

@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from typing import Optional, Tuple
 
@@ -8,8 +9,8 @@ class LineStatus:
     Forward_4step = 1
     Left_Half_Forward = 2
     Right_Half_Forward = 3
-    Left_Forward = 4
-    Right_Forward = 5
+    Left_Turn_Half = 4
+    Right_Turn_Half = 5
     Left_Turn = 6
     Right_Turn = 7
     Forward_half = 8
@@ -54,16 +55,24 @@ class LineFeatures:
 
 class LineDecision:
     def __init__(self):
-        #직진, 미세회전, 회전 각도 기준 설정
+        # 직진, 미세회전, 중간회전, 회전 각도 기준
         self.forward_angle = 7.0
-        self.turn_angle = 22.5
+        self.fine_turn_angle = 22.5
+        self.half_turn_angle = 30.0
 
         # x = a*y^2 + b*y + c 픽셀 좌표 피팅 기준
         self.curve_a = 1e-4
 
         #거리기준 - 픽셀 단위로 맞춰서 수정하기
         self.move_distance = 90.0
+        self.steering_distance_max = 130.0
         self.curve_distance = 100.0
+
+        # 직선에서 거리와 각도가 서로 반대 방향을 가리키는 특수
+        # 상황에만 조향각을 사용한다. 평소에는 기존 거리 우선 로직을
+        # 유지하고, 거리 보정은 방향 충돌을 완화하는 용도로 제한한다.
+        self.steering_scale_px = 600.0
+        self.steering_limit = 10.0
 
 
     def decide(self, features: LineFeatures) -> Tuple[int, float]:
@@ -75,41 +84,115 @@ class LineDecision:
             return self._status_from_follow_angle(features.follow_angle)
 
         # 점 3개는 일반 직선 상황이다.
-        # 라인이 중심선에서 멀면 각도보다 거리 보정을 우선한다.
         if features.point_count == 3:
+            return self._status_from_straight_line(
+                features.line_angle,
+                features.line_distance,
+            )
+
+        # 점 4개 이상은 먼저 이차함수의 a값으로 직선과 곡선을 구분한다.
+        curve_a = features.curve_a
+        is_curve = curve_a is not None and abs(curve_a) > self.curve_a
+
+        # 곡선 구간의 기존 거리 우선 및 접선 각도 판단은 유지한다.
+        if is_curve:
             distance = features.line_distance
             if (
                 distance is not None
-                and abs(distance) >= self.move_distance
+                and abs(distance) >= self.curve_distance
             ):
                 if distance < 0:
                     return LineStatus.Left_Half_Forward, 0.0
                 return LineStatus.Right_Half_Forward, 0.0
-            return self._status_from_line_angle(features.line_angle)
-
-        # 점 4개 이상은 먼저 이차함수의 a값으로 직선과 곡선을 구분한다.
-        # 곡선은 curve_distance, 직선은 move_distance를 거리 기준으로 사용한다.
-        curve_a = features.curve_a
-        is_curve = curve_a is not None and abs(curve_a) > self.curve_a
-        distance_limit = (
-            self.curve_distance if is_curve else self.move_distance
-        )
-
-        distance = features.line_distance
-        if (
-            distance is not None
-            and abs(distance) >= distance_limit
-        ):
-            if distance < 0:
-                return LineStatus.Left_Half_Forward, 0.0
-            return LineStatus.Right_Half_Forward, 0.0
-
-        # 거리 보정이 필요하지 않은 곡선은 접선 각도로 판단한다.
-        if is_curve:
             return self._status_from_curve_angle(features.tangent_angle)
 
-        # 중심선과 가까우면 직선 각도를 기준으로 판단한다.
-        return self._status_from_line_angle(features.line_angle)
+        return self._status_from_straight_line(
+            features.line_angle,
+            features.line_distance,
+        )
+
+    def _status_from_straight_line(
+        self,
+        line_angle: Optional[float],
+        line_distance: Optional[float],
+    ) -> Tuple[int, float]:
+        """Use steering only when straight-line distance and angle conflict."""
+        distance_status = self._distance_half_status(line_distance)
+        angle_status, angle_value = self._status_from_line_angle(line_angle)
+        opposite_half = bool(
+            (
+                distance_status == LineStatus.Left_Half_Forward
+                and angle_status == LineStatus.Right_Half_Forward
+            )
+            or (
+                distance_status == LineStatus.Right_Half_Forward
+                and angle_status == LineStatus.Left_Half_Forward
+            )
+        )
+        use_steering = bool(
+            line_angle is not None
+            and line_distance is not None
+            and self.move_distance
+            <= abs(line_distance)
+            < self.steering_distance_max
+            and self.forward_angle
+            < abs(line_angle)
+            <= self.half_turn_angle
+            and opposite_half
+        )
+        if use_steering:
+            return self._status_from_conflicting_straight_errors(
+                line_angle,
+                line_distance,
+            )
+
+        # 기존 직선 로직: 중심에서 90px 이상 벗어나면 거리 방향의
+        # 반보행을 우선하고, 그 안에서는 원래 라인 각도를 사용한다.
+        if distance_status is not None:
+            return distance_status, 0.0
+
+        return angle_status, angle_value
+
+    def _distance_half_status(
+        self,
+        line_distance: Optional[float],
+    ) -> Optional[int]:
+        if line_distance is None or abs(line_distance) < self.move_distance:
+            return None
+        if line_distance < 0.0:
+            return LineStatus.Left_Half_Forward
+        return LineStatus.Right_Half_Forward
+
+    def _status_from_conflicting_straight_errors(
+        self,
+        line_angle: float,
+        line_distance: float,
+    ) -> Tuple[int, float]:
+        """Combine only meaningful, opposite straight-line errors."""
+
+        distance_angle = math.degrees(
+            math.atan(
+                line_distance
+                / self.steering_scale_px
+            )
+        )
+        distance_angle = max(
+            -self.steering_limit,
+            min(self.steering_limit, distance_angle),
+        )
+        steering_angle = line_angle + distance_angle
+        status, angle = self._status_from_line_angle(steering_angle)
+
+        # 거리 보정만으로 중간회전이 full turn으로 승격되지 않게 한다.
+        if (
+            status in (LineStatus.Left_Turn, LineStatus.Right_Turn)
+            and abs(line_angle) <= self.half_turn_angle
+        ):
+            if steering_angle < 0.0:
+                return LineStatus.Left_Turn_Half, abs(steering_angle)
+            return LineStatus.Right_Turn_Half, abs(steering_angle)
+
+        return status, angle
 
     def _status_from_follow_angle(self, angle: Optional[float]) -> Tuple[int, float]:
         if angle is None:
@@ -129,18 +212,25 @@ class LineDecision:
 
         abs_angle = abs(angle)
 
-        # 8도 이하: 직진
+        # 7도 이하: 직진
         if abs_angle <= self.forward_angle:
             return LineStatus.Forward_4step, 0.0
 
-        # 8~20도: 미세회전
-        if abs_angle <= self.turn_angle:
+        # 7~22.5도: 전진하며 미세회전
+        if abs_angle <= self.fine_turn_angle:
             if angle < 0:
                 return LineStatus.Left_Half_Forward, abs_angle
             else:
                 return LineStatus.Right_Half_Forward, abs_angle
 
-        # 20도 초과: 회전
+        # 22.5도 초과, 30도 미만: 중간 제자리회전
+        if abs_angle < self.half_turn_angle:
+            if angle < 0:
+                return LineStatus.Left_Turn_Half, abs_angle
+            else:
+                return LineStatus.Right_Turn_Half, abs_angle
+
+        # 30도 이상: full turn
         if angle < 0:
             return LineStatus.Left_Turn, abs_angle
         else:
@@ -153,18 +243,18 @@ class LineDecision:
 
             abs_angle = abs(angle)
 
-            # 15도 이하: 직진
+            # 7도 이하: 직진
             if abs_angle <= self.forward_angle:
                 return LineStatus.Forward_4step, 0.0
 
-            # 15~25도: 미세회전
-            if abs_angle <= self.turn_angle:
+            # 7~22.5도: 미세회전
+            if abs_angle <= self.fine_turn_angle:
                 if angle < 0:
                     return LineStatus.Left_Half_Forward, abs_angle
                 else:
                     return LineStatus.Right_Half_Forward, abs_angle
 
-            # 25도 초과: curve 회전
+            # 22.5도 초과: curve 회전
             if angle < 0:
                 return LineStatus.Left_Turn_Curve, abs_angle
             else:
@@ -177,7 +267,7 @@ class LineStatusPublisher:
         self.line_decision = LineDecision()
         self.line_pub = self.node.create_publisher(LineResult, topic_name, 10)
 
-    # 라인 상태를 판단하고 발행하는 함수
+    #라인 상태를 판단하고 Publish하는 함수
     def publish_line_status(
         self,
         point_count: int,
@@ -193,7 +283,7 @@ class LineStatusPublisher:
         follow_distance: Optional[float] = None,
     ) -> Tuple[int, float]:
 
-        # LineFeatures 객체 생성
+        #LineFeatures 객체 생성
         features = LineFeatures(
             point_count=point_count,
             line_angle=line_angle,
@@ -208,10 +298,10 @@ class LineStatusPublisher:
             follow_distance=follow_distance,
         )
 
-        # 라인 상태 판단
+        #라인 상태를 판단
         status, angle = self.line_decision.decide(features)
 
-        # 라인 상태 발행
+        #라인 상태를 Publish
         msg = LineResult()
         msg.status = int(status)
         msg.angle = float(angle)

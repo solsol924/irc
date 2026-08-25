@@ -16,6 +16,7 @@ publish 값:
 - follow_distance
 - line_second_point_distance_px, hurdle_line_angle_deg
 - ball / hurdle detection 정보
+- raw_ball_in_hand (/raw_ball_in_hand)
 
 공/허들 fusion 관련 주의:
 - 이 파일은 웹캠 YOLO의 ball/hurdle 검출 필드를 /line_tracker/state로 전달합니다.
@@ -49,6 +50,17 @@ try:
     from ultralytics import YOLO
 except ImportError :
     YOLO = None
+
+
+RAW_BALL_IN_HAND_DEFAULTS = {
+    "raw_ball_in_hand_hold_seconds": 0.3,
+    "raw_ball_in_hand_angle_min_deg": 56.0,
+    "raw_ball_in_hand_angle_max_deg": 58.0,
+    "raw_ball_in_hand_x_min_px": 282.0,
+    "raw_ball_in_hand_x_max_px": 289.0,
+    "raw_ball_in_hand_y_min_px": 182.0,
+    "raw_ball_in_hand_y_max_px": 190.0,
+}
 
 
 # ═══════════════════════════════════════════════════════
@@ -92,8 +104,8 @@ MOTION_NAME = {
     1: "Forward_4step",
     2: "Left_Half_Forward",
     3: "Right_Half_Forward",
-    4: "Left_Forward",
-    5: "Right_Forward",
+    4: "Left_Turn_Half",
+    5: "Right_Turn_Half",
     6: "Left_Turn",
     7: "Right_Turn",
     8: "Forward_half",
@@ -185,8 +197,8 @@ LINE_STATUS_NAME = {
     LineStatus.Forward_4step: "Forward_4step",
     LineStatus.Left_Half_Forward: "Left_Half_Forward",
     LineStatus.Right_Half_Forward: "Right_Half_Forward",
-    LineStatus.Left_Forward: "Left_Forward",
-    LineStatus.Right_Forward: "Right_Forward",
+    LineStatus.Left_Turn_Half: "Left_Turn_Half",
+    LineStatus.Right_Turn_Half: "Right_Turn_Half",
     LineStatus.Left_Turn: "Left_Turn",
     LineStatus.Right_Turn: "Right_Turn",
     LineStatus.Forward_half: "Forward_half",
@@ -212,7 +224,9 @@ def apply_line_status(
         "line_distance": payload.get("line_distance"),
         "target_x": payload.get("target_x"),
         "target_y": payload.get("target_y"),
-        "robot_center_x": frame_w / 2.0,
+        "robot_center_x": float(
+            payload.get("robot_center_x", frame_w / 2.0)
+        ),
         "robot_center_y": float(frame_h),
         "follow_angle": payload.get("follow_angle"),
         "follow_distance": payload.get("follow_distance"),
@@ -327,6 +341,9 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "ball_class": "ball",
         "hurdle_class": "hurdle",
 
+        # 화면의 BALL 패널에 표시되는 angle/x/y가 모두 범위 안일 때 True.
+        **RAW_BALL_IN_HAND_DEFAULTS,
+
         # visibility filter
         # min_visible_ratio = 0.70 means: hide/reject objects if estimated visible area is below 70%.
         # Because YOLO boxes are usually clipped to the image, reject_edge_cut_objects is used
@@ -389,6 +406,34 @@ def load_config(ini_path: str = "settings.ini") -> dict:
         "line_class": gs("yolo", "line_class", defaults["line_class"]),
         "ball_class": gs("yolo", "ball_class", defaults["ball_class"]),
         "hurdle_class": gs("yolo", "hurdle_class", defaults["hurdle_class"]),
+
+        "raw_ball_in_hand_angle_min_deg": gf(
+            "raw_ball_in_hand",
+            "angle_min_deg",
+            defaults["raw_ball_in_hand_angle_min_deg"],
+        ),
+        "raw_ball_in_hand_angle_max_deg": gf(
+            "raw_ball_in_hand",
+            "angle_max_deg",
+            defaults["raw_ball_in_hand_angle_max_deg"],
+        ),
+        "raw_ball_in_hand_hold_seconds": gf(
+            "raw_ball_in_hand",
+            "hold_seconds",
+            defaults["raw_ball_in_hand_hold_seconds"],
+        ),
+        "raw_ball_in_hand_x_min_px": gf(
+            "raw_ball_in_hand", "x_min_px", defaults["raw_ball_in_hand_x_min_px"]
+        ),
+        "raw_ball_in_hand_x_max_px": gf(
+            "raw_ball_in_hand", "x_max_px", defaults["raw_ball_in_hand_x_max_px"]
+        ),
+        "raw_ball_in_hand_y_min_px": gf(
+            "raw_ball_in_hand", "y_min_px", defaults["raw_ball_in_hand_y_min_px"]
+        ),
+        "raw_ball_in_hand_y_max_px": gf(
+            "raw_ball_in_hand", "y_max_px", defaults["raw_ball_in_hand_y_max_px"]
+        ),
 
         "min_visible_ratio": gf("visibility", "min_visible_ratio", defaults["min_visible_ratio"]),
         "reject_edge_cut_objects": gb("visibility", "reject_edge_cut_objects", defaults["reject_edge_cut_objects"]),
@@ -508,7 +553,23 @@ def get_yolo_line_points(dets: list[ObjectDetection], frame_w: int, frame_h: int
 #  알고리즘 쪽으로 보낼 값 계산
 # ═══════════════════════════════════════════════════════
 
-def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, frame_h: int) -> dict:
+def robot_center_x(
+    frame_w: int,
+    robot_center_offset_x_px: float = 25.0,
+) -> float:
+    """Return the calibrated robot center X clamped to the image bounds."""
+    return min(
+        max((float(frame_w) / 2.0) + float(robot_center_offset_x_px), 0.0),
+        max(0.0, float(frame_w - 1)),
+    )
+
+
+def make_line_payload(
+    line_points: list[tuple[float, float]],
+    frame_w: int,
+    frame_h: int,
+    robot_center_offset_x_px: float = 25.0,
+) -> dict:
     """
     알고리즘 패키지로 넘길 line 값 계산.
     point_count <= 1이면 알고리즘 쪽에서는 LOST로 보면 됨.
@@ -532,7 +593,7 @@ def make_line_payload(line_points: list[tuple[float, float]], frame_w: int, fram
     if point_count == 0:
         return payload
 
-    robot_x = frame_w / 2.0
+    robot_x = robot_center_x(frame_w, robot_center_offset_x_px)
     robot_y = float(frame_h)
 
     # 가장 가까운 점 기준. 음수면 라인이 왼쪽, 양수면 오른쪽.
@@ -657,13 +718,34 @@ def visible_enough(d: ObjectDetection, frame_w: int, frame_h: int, cfg: dict) ->
 
     return True
 
-def best_object_payload(dets: list[ObjectDetection], cfg: dict, class_key: str, frame_w: int, frame_h: int) -> dict:
-    """ball/hurdle 중 confidence가 가장 높은 객체 하나를 payload로 변환."""
+def best_object_detection(
+    dets: list[ObjectDetection],
+    cfg: dict,
+    class_key: str,
+    frame_w: int,
+    frame_h: int,
+) -> Optional[ObjectDetection]:
+    """Return the highest-confidence usable detection for one object class."""
     class_name = cfg[f"{class_key}_class"]
     conf_thres = cfg[f"{class_key}_conf"]
-    objs = [d for d in dets if d.name == class_name and d.conf >= conf_thres and visible_enough(d, frame_w, frame_h, cfg)]
+    objs = [
+        d
+        for d in dets
+        if (
+            d.name == class_name
+            and d.conf >= conf_thres
+            and visible_enough(d, frame_w, frame_h, cfg)
+        )
+    ]
 
-    if not objs:
+    return max(objs, key=lambda d: d.conf, default=None)
+
+
+def best_object_payload(dets: list[ObjectDetection], cfg: dict, class_key: str, frame_w: int, frame_h: int) -> dict:
+    """ball/hurdle 중 confidence가 가장 높은 객체 하나를 payload로 변환."""
+    best = best_object_detection(dets, cfg, class_key, frame_w, frame_h)
+
+    if best is None:
         return {
             f"{class_key}_detected": False,
             f"{class_key}_x": -1.0,
@@ -672,7 +754,6 @@ def best_object_payload(dets: list[ObjectDetection], cfg: dict, class_key: str, 
             f"{class_key}_bbox": [],
         }
 
-    best = max(objs, key=lambda d: d.conf)
     return {
         f"{class_key}_detected": True,
         f"{class_key}_x": float(best.cx),
@@ -689,15 +770,11 @@ def add_ball_geometry(
     robot_center_offset_x_px: float = 25.0,
 ) -> dict:
     """공 중심과 로봇 하단 기준점 사이의 화면상 기하 정보를 추가한다."""
-    robot_x = min(
-        max((float(frame_w) / 2.0) + float(robot_center_offset_x_px), 0.0),
-        max(0.0, float(frame_w - 1)),
-    )
+    robot_x = robot_center_x(frame_w, robot_center_offset_x_px)
     robot_y = max(0.0, float(frame_h - 1))
 
     payload["robot_center_x"] = robot_x
     payload["robot_center_y"] = robot_y
-    payload["ball_x_offset_px"] = None
     payload["ball_x_distance_px"] = None
     payload["ball_y_distance_px"] = None
     payload["ball_distance_px"] = None
@@ -715,29 +792,88 @@ def add_ball_geometry(
     if not math.isfinite(ball_x) or not math.isfinite(ball_y):
         return payload
 
-    # x는 로봇 중심선을 기준으로 왼쪽이 음수, 오른쪽이 양수다.
-    # 화면 표시와 BallStatusPublisher 전달값 모두 같은 signed 값을 사용한다.
-    dx = ball_x - robot_x
-    x_distance = dx
+    # x_distance는 로봇 중심선을 기준으로 왼쪽이 음수, 오른쪽이 양수다.
+    x_distance = ball_x - robot_x
     y_distance = abs(robot_y - ball_y)
-    payload["ball_x_offset_px"] = float(dx)
     payload["ball_x_distance_px"] = float(x_distance)
     payload["ball_y_distance_px"] = float(y_distance)
     payload["ball_distance_px"] = float(math.hypot(x_distance, y_distance))
-    payload["ball_angle_deg"] = float(math.degrees(math.atan2(dx, y_distance)))
+    payload["ball_angle_deg"] = float(
+        math.degrees(math.atan2(x_distance, y_distance))
+    )
     return payload
 
 
+def is_raw_ball_in_hand(payload: dict, cfg: Optional[dict] = None) -> bool:
+    """화면에 표시되는 공 angle/x/y가 설정 범위에 모두 들어오는지 판단한다."""
+    if not bool(payload.get("ball_detected", False)):
+        return False
+
+    cfg = cfg or {}
+    try:
+        angle = float(payload["ball_angle_deg"])
+        x_distance = float(payload["ball_x_distance_px"])
+        y_distance = float(payload["ball_y_distance_px"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    if not all(math.isfinite(value) for value in (angle, x_distance, y_distance)):
+        return False
+
+    return (
+        float(cfg.get("raw_ball_in_hand_angle_min_deg", 56.0))
+        <= angle
+        <= float(cfg.get("raw_ball_in_hand_angle_max_deg", 58.0))
+        and float(cfg.get("raw_ball_in_hand_x_min_px", 282.0))
+        <= x_distance
+        <= float(cfg.get("raw_ball_in_hand_x_max_px", 289.0))
+        and float(cfg.get("raw_ball_in_hand_y_min_px", 182.0))
+        <= y_distance
+        <= float(cfg.get("raw_ball_in_hand_y_max_px", 190.0))
+    )
+
+
+@dataclass
+class ContinuousTrueGate:
+    """True 조건이 지정된 시간 동안 연속 유지된 뒤에만 True를 반환한다."""
+
+    hold_seconds: float
+    started_at: Optional[float] = None
+
+    def reset(self) -> None:
+        self.started_at = None
+
+    def update(self, condition: bool, now: Optional[float] = None) -> bool:
+        if not condition:
+            self.reset()
+            return False
+
+        current_time = time.monotonic() if now is None else float(now)
+        if self.started_at is None:
+            self.started_at = current_time
+            return self.hold_seconds <= 0.0
+
+        return current_time - self.started_at >= max(0.0, self.hold_seconds)
+
+
 def make_vision_payload(dets: list[ObjectDetection], line_points: list[tuple[float, float]], frame_w: int, frame_h: int, cfg: dict) -> dict:
-    payload = make_line_payload(line_points, frame_w, frame_h)
+    center_offset_x = float(cfg.get("robot_center_offset_x_px", 25.0))
+    payload = make_line_payload(
+        line_points,
+        frame_w,
+        frame_h,
+        center_offset_x,
+    )
     payload.update(best_object_payload(dets, cfg, "ball", frame_w, frame_h))
     payload.update(best_object_payload(dets, cfg, "hurdle", frame_w, frame_h))
-    return add_ball_geometry(
+    payload = add_ball_geometry(
         payload,
         frame_w,
         frame_h,
-        float(cfg.get("robot_center_offset_x_px", 25.0)),
+        center_offset_x,
     )
+    payload["raw_ball_in_hand"] = is_raw_ball_in_hand(payload, cfg)
+    return payload
 
 
 # ═══════════════════════════════════════════════════════
@@ -774,12 +910,16 @@ def visualize_yolo(
     robot_x = min(max(robot_x, 0), max(0, w - 1))
     robot_y = min(max(robot_y, 0), max(0, h - 1))
     light_sky_blue = (250, 206, 135)  # OpenCV BGR
+    best_ball = best_object_detection(dets, cfg, "ball", w, h)
 
     cv2.rectangle(vis, (roi_left, roi_top), (roi_right, roi_bottom), (80, 80, 80), 2)
     cv2.line(vis, (robot_x, robot_y), (robot_x, roi_top), (200, 200, 200), 1, cv2.LINE_AA)
 
     # YOLO boxes
     for d in dets:
+        # 계산에 사용하는 최고 confidence 공 하나만 화면에 표시한다.
+        if d.name == cfg["ball_class"] and d is not best_ball:
+            continue
         # confidence 0.40 이하는 라인 판단에는 사용할 수 있지만 화면에는 숨긴다.
         if d.name == cfg["line_class"] and d.conf <= line_display_conf:
             continue
@@ -946,6 +1086,7 @@ def visualize_yolo(
                 if ball_angle is not None and ball_dx is not None and ball_dy is not None
                 else "ang:N/A x:N/A y:N/A"
             ),
+            f"RAW_BALL_IN_HAND:{str(bool(payload.get('raw_ball_in_hand', False))).upper()}",
         ]
         panel_bottom = draw_text_panel(
             ball_lines,
@@ -1003,6 +1144,7 @@ def analyze_frame_yolo(
     cfg: dict,
     line_status_publisher: Optional[LineStatusPublisher] = None,
     motion_state: Optional[MotionDisplayState] = None,
+    raw_ball_in_hand_gate: Optional[ContinuousTrueGate] = None,
 ) -> tuple[dict, np.ndarray]:
     h, w = frame.shape[:2]
     dets = yolo_detect(model, frame, cfg)
@@ -1011,6 +1153,10 @@ def analyze_frame_yolo(
     # 주행용 직선/이차 피팅에는 검출된 모든 라인 중심점을 사용한다.
     line_points = raw_line_points
     payload = make_vision_payload(dets, line_points, w, h, cfg)
+    if raw_ball_in_hand_gate is not None:
+        payload["raw_ball_in_hand"] = raw_ball_in_hand_gate.update(
+            bool(payload.get("raw_ball_in_hand", False))
+        )
     payload = LINE_SMOOTHER.smooth(payload, w, h)
     payload = apply_line_status(payload, w, h, line_status_publisher)
 
@@ -1039,7 +1185,7 @@ def main_ros2(ini_path: str = "settings.ini"):
     from rclpy.node import Node
     from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
     from sensor_msgs.msg import Image
-    from std_msgs.msg import String
+    from std_msgs.msg import Bool, String
     from cv_bridge import CvBridge
 
     cfg = load_config(ini_path)
@@ -1053,6 +1199,11 @@ def main_ros2(ini_path: str = "settings.ini"):
             self.inference_failures = 0
             self.last_model_reload = 0.0
             self.motion_display_state = MotionDisplayState()
+            self.raw_ball_in_hand_gate = ContinuousTrueGate(
+                hold_seconds=float(
+                    self.cfg.get("raw_ball_in_hand_hold_seconds", 0.3)
+                )
+            )
             self.model = load_yolo_model(self.cfg)
             # YOLO is interested in the newest camera frame only.  A deep reliable
             # queue retains stale full-resolution images while TensorRT is busy and
@@ -1062,6 +1213,11 @@ def main_ros2(ini_path: str = "settings.ini"):
                 Image, "/camera/image_raw", self.cb_image, qos_profile_sensor_data
             )
             self.pub_state = self.create_publisher(String, "/line_tracker/state", 10)
+            self.pub_raw_ball_in_hand = self.create_publisher(
+                Bool,
+                "/raw_ball_in_hand",
+                10,
+            )
             self.pub_debug = self.create_publisher(Image, "/line_tracker/debug_image", 10)
             self.line_status_publisher = LineStatusPublisher(self)
             self.motion_command_sub = self.create_subscription(
@@ -1143,10 +1299,13 @@ def main_ros2(ini_path: str = "settings.ini"):
                     self.cfg,
                     self.line_status_publisher,
                     self.motion_display_state,
+                    self.raw_ball_in_hand_gate,
                 )
                 self.inference_failures = 0
             except Exception:
                 self.inference_failures += 1
+                self.raw_ball_in_hand_gate.reset()
+                self.pub_raw_ball_in_hand.publish(Bool(data=False))
                 self.get_logger().error(
                     "GPU inference failed; keeping YOLO node alive "
                     f"(consecutive={self.inference_failures})\n{traceback.format_exc()}"
@@ -1170,6 +1329,9 @@ def main_ros2(ini_path: str = "settings.ini"):
                         )
                 return
             self.publish_hurdle_status(payload)
+            self.pub_raw_ball_in_hand.publish(
+                Bool(data=bool(payload.get("raw_ball_in_hand", False)))
+            )
             self.pub_state.publish(String(data=json.dumps(payload, ensure_ascii=False)))
 
             debug_msg = self.bridge.cv2_to_imgmsg(vis, encoding="bgr8")
@@ -1211,6 +1373,9 @@ def main_ros2(ini_path: str = "settings.ini"):
 def main_standalone(ini_path: str = "settings.ini"):
     cfg = load_config(ini_path)
     model = load_yolo_model(cfg)
+    raw_ball_in_hand_gate = ContinuousTrueGate(
+        hold_seconds=float(cfg.get("raw_ball_in_hand_hold_seconds", 0.3))
+    )
 
     cap = cv2.VideoCapture(cfg["cam_index"])
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, cfg["cam_width"])
@@ -1234,7 +1399,12 @@ def main_standalone(ini_path: str = "settings.ini"):
             frame = cv2.flip(frame, 0)
 
         t0 = time.perf_counter()
-        payload, vis = analyze_frame_yolo(frame, model, cfg)
+        payload, vis = analyze_frame_yolo(
+            frame,
+            model,
+            cfg,
+            raw_ball_in_hand_gate=raw_ball_in_hand_gate,
+        )
         process_ms = (time.perf_counter() - t0) * 1000.0
         payload["process_ms"] = float(process_ms)
 

@@ -1,10 +1,10 @@
 hoop_vision:
   ros__parameters:
     red_h1_low: 0
-    red_h1_high: 10
-    red_h2_low: 160
+    red_h1_high: 5
+    red_h2_low: 174
     red_h2_high: 179
-    red_s_low: 80
-    red_v_low: 60
-    white_s_high: 80
-    white_v_low: 80
+    red_s_low: 149
+    red_v_low: 107
+    white_s_high: 23
+    white_v_low: 162

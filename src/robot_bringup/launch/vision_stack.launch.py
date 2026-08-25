@@ -86,6 +86,9 @@ def generate_launch_description() -> LaunchDescription:
     hoop_script = PathJoinSubstitution([scripts_dir, "hoop_vision.py"])
     monitor_script = PathJoinSubstitution([scripts_dir, "vision_status_monitor.py"])
     selector_script = PathJoinSubstitution([scripts_dir, "realsense_debug_selector.py"])
+    rgb_stabilizer_script = PathJoinSubstitution(
+        [scripts_dir, "realsense_rgb_stabilizer.py"]
+    )
 
     declarations = [
         DeclareLaunchArgument(
@@ -127,6 +130,19 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument("webcam_width", default_value="640"),
         DeclareLaunchArgument("webcam_height", default_value="480"),
         DeclareLaunchArgument("webcam_fps", default_value="15"),
+        DeclareLaunchArgument(
+            "lock_realsense_rgb_after_warmup",
+            default_value="true",
+            description=(
+                "Warm up RealSense RGB auto exposure/WB, then lock the "
+                "settled values for stable HSV detection."
+            ),
+        ),
+        DeclareLaunchArgument(
+            "realsense_rgb_warmup_seconds",
+            default_value="5.0",
+            description="Auto exposure/WB warmup time before locking.",
+        ),
     ]
 
     # RealSense color/depth는 공과 후프 검출에 사용한다. 허들은 아래 webcam
@@ -155,8 +171,37 @@ def generate_launch_description() -> LaunchDescription:
                 "align_depth.enable": True,
                 "pointcloud.enable": False,
                 "initial_reset": False,
+                # UVC power-line-frequency: 0=off, 1=50 Hz, 2=60 Hz,
+                # 3=auto. 이 RealSense는 [0, 2]만 지원하므로 한국 실내
+                # 조명에서는 auto(3)가 아니라 60 Hz(2)를 명시한다.
+                "rgb_camera.power_line_frequency": 2,
+                # 시작 직후에는 현장 조명에 적응시킨다. 아래 stabilizer가
+                # 3~5초 뒤 수렴값을 읽고 자동 기능을 끈다.
+                "rgb_camera.enable_auto_exposure": True,
+                "rgb_camera.enable_auto_white_balance": True,
             }
         ],
+    )
+
+    rgb_stabilizer_process = ExecuteProcess(
+        name="realsense_rgb_stabilizer_process",
+        cmd=[
+            sys.executable,
+            rgb_stabilizer_script,
+            "--camera-node",
+            "/camera",
+            "--warmup-seconds",
+            LaunchConfiguration("realsense_rgb_warmup_seconds"),
+            "--power-line-frequency",
+            "2",
+        ],
+        cwd=scripts_dir,
+        output="screen",
+        emulate_tty=True,
+        condition=IfCondition(
+            LaunchConfiguration("lock_realsense_rgb_after_warmup")
+        ),
+        additional_env={"PYTHONUNBUFFERED": "1"},
     )
 
     webcam_node = OpaqueFunction(function=_make_webcam_node)
@@ -249,5 +294,12 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     return LaunchDescription(
-        declarations + [realsense_node, webcam_node, yolo_process, delayed_vision]
+        declarations
+        + [
+            realsense_node,
+            rgb_stabilizer_process,
+            webcam_node,
+            yolo_process,
+            delayed_vision,
+        ]
     )

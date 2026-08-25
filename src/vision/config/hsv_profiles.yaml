@@ -12,7 +12,8 @@ profiles:
     blur_size: 3
     morph_size: 5
     min_area: 120
-    ball_circularity_min: 0.33
+    # 실전 검출기와 보정 미리보기의 시작값을 동일하게 유지한다.
+    ball_circularity_min: 0.38
   support:
     h_low: 0
     h_high: 179
@@ -40,11 +41,11 @@ profiles:
     min_area: 120
     ball_circularity_min: 0.45
   hoop_red:
-    h_low: 160
-    h_high: 10
-    s_low: 80
-    s_high: 255
-    v_low: 60
+    h_low: 174
+    h_high: 5
+    s_low: 149
+    s_high: 226
+    v_low: 107
     v_high: 255
     depth_min_mm: 100
     depth_max_mm: 6000
@@ -56,8 +57,8 @@ profiles:
     h_low: 0
     h_high: 179
     s_low: 0
-    s_high: 80
-    v_low: 80
+    s_high: 23
+    v_low: 162
     v_high: 255
     depth_min_mm: 100
     depth_max_mm: 6000
@@ -78,4 +79,4 @@ detector:
   edge_support_min_visible_fraction: 0.12
 metadata:
   note: Latest venue calibration. Updated by realsense_hsv_calibrator.py.
-  last_saved_unix: 1784857432.0283618
+  last_saved_unix: 1787573096.6494894
