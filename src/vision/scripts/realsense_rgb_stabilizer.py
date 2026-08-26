@@ -7,8 +7,8 @@ RealSense RGB의 60 Hz anti-flicker와 현장 노출/WB를 고정한다.
 2. 한국/60 Hz 조명에 맞게 power_line_frequency=2를 적용한다.
 3. 자동 노출과 자동 white balance를 켠 상태로 현장 조명에 적응시킨다.
 4. warmup 시간이 지나면 현재 exposure/gain/white_balance 값을 읽는다.
-5. 자동 기능을 끈 뒤 읽어 둔 값을 다시 적용해 HSV 밝기/색이 계속 움직이지
-   않게 한다.
+5. 자동 기능을 끈 뒤 읽어 둔 값을 다시 적용해 YOLO 입력 밝기/색이 계속
+   움직이지 않게 한다.
 
 power_line_frequency 값은 Linux UVC 규격에서 0=off, 1=50 Hz, 2=60 Hz,
 3=auto이다. 사용 중인 RealSense가 [0, 2]만 지원하므로 auto(3)가 아니라

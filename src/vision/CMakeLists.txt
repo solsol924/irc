@@ -23,10 +23,6 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
   ament_add_pytest_test(
-    test_ball_detector_core
-    test/test_ball_detector_core.py
-  )
-  ament_add_pytest_test(
     test_detector_activation
     test/test_detector_activation.py
   )
@@ -41,14 +37,12 @@ install(PROGRAMS
   scripts/realsense_yolo_detector.py
   scripts/ball_vision_fusion.py
   scripts/realsense_rgb_stabilizer.py
-  scripts/realsense_hsv_calibrator.py
   scripts/hurdle_vision_fusion.py
   scripts/vision_status_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(FILES
-  scripts/ball_detector_core.py
   scripts/line_status_publisher.py
   scripts/ball_status_publisher.py
   scripts/hurdle_status_publisher.py

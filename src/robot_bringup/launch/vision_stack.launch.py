@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""IRC 전체 Vision 실행: webcam YOLO + RealSense ball + webcam hurdle.
+"""IRC 전체 Vision 실행: webcam YOLO + RealSense ball/hoop YOLO.
 
 배치 위치:
   ~/irc/src/robot_bringup/launch/vision_stack.launch.py
@@ -12,9 +12,18 @@ import glob
 import sys
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    ExecuteProcess,
+    OpaqueFunction,
+    TimerAction,
+)
 from launch.conditions import IfCondition
-from launch.substitutions import EnvironmentVariable, LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import (
+    EnvironmentVariable,
+    LaunchConfiguration,
+    PathJoinSubstitution,
+)
 from launch_ros.actions import Node
 
 
@@ -83,8 +92,12 @@ def generate_launch_description() -> LaunchDescription:
         [scripts_dir, "realsense_yolo_detector.py"]
     )
     ball_script = PathJoinSubstitution([scripts_dir, "ball_vision_fusion.py"])
-    hurdle_script = PathJoinSubstitution([scripts_dir, "hurdle_vision_fusion.py"])
-    monitor_script = PathJoinSubstitution([scripts_dir, "vision_status_monitor.py"])
+    hurdle_script = PathJoinSubstitution(
+        [scripts_dir, "hurdle_vision_fusion.py"]
+    )
+    monitor_script = PathJoinSubstitution(
+        [scripts_dir, "vision_status_monitor.py"]
+    )
     rgb_stabilizer_script = PathJoinSubstitution(
         [scripts_dir, "realsense_rgb_stabilizer.py"]
     )
@@ -93,7 +106,13 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument(
             "scripts_dir",
             default_value=PathJoinSubstitution(
-                [EnvironmentVariable("HOME"), "irc", "src", "vision", "scripts"]
+                [
+                    EnvironmentVariable("HOME"),
+                    "irc",
+                    "src",
+                    "vision",
+                    "scripts",
+                ]
             ),
             description="vision Python scripts/settings/model directory",
         ),
@@ -133,7 +152,7 @@ def generate_launch_description() -> LaunchDescription:
             default_value="true",
             description=(
                 "Warm up RealSense RGB auto exposure/WB, then lock the "
-                "settled values for stable HSV detection."
+                "settled values for stable YOLO input."
             ),
         ),
         DeclareLaunchArgument(
@@ -143,8 +162,7 @@ def generate_launch_description() -> LaunchDescription:
         ),
     ]
 
-    # RealSense color/depth는 공과 후프 검출에 사용한다. 허들은 아래 webcam
-    # YOLO state만 사용하며 RealSense 영상을 구독하지 않는다.
+    # RealSense color/depth는 하나의 YOLO 노드에서 공과 후프 검출에 사용한다.
     realsense_node = Node(
         package="realsense2_camera",
         executable="realsense2_camera_node",
@@ -228,15 +246,10 @@ def generate_launch_description() -> LaunchDescription:
         additional_env={"PYTHONUNBUFFERED": "1"},
     )
 
+    # 융합 노드는 YOLO JSON 상태만 처리하며 카메라 영상을 다시 구독하지 않는다.
     ball_process = ExecuteProcess(
         name="ball_vision_fusion_process",
-        cmd=[
-            sys.executable,
-            ball_script,
-            "--ros-args",
-            "-p",
-            "use_realsense_yolo:=true",
-        ],
+        cmd=[sys.executable, ball_script],
         cwd=scripts_dir,
         output="screen",
         emulate_tty=True,
