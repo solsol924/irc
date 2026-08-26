@@ -5,11 +5,11 @@ ROS 2 + RealSense HSV/Depth 보정 도구.
 목적
 ----
 * 현재 경기장과 조명에 맞춰 HSV 및 깊이 범위를 조정한다.
-* 공, hoop 빨간 테두리, hoop 흰 내부의 최신 프로필을 각각 관리한다.
+* 공, 검은 받침대, 빨간 바닥의 최신 프로필을 각각 관리한다.
 * 여러 프레임에서 선택한 ROI 표본으로 안정적인 HSV 범위를 계산한다.
 * 원본·정리 HSV 마스크, 깊이 마스크, 결합 마스크와 후보를 미리 본다.
 * 현재 프로필, 화면, 깊이 배열과 CSV 측정값을 저장한다.
-* 최신 공·hoop HSV를 실제 검출기가 읽는 ROS 파라미터 파일로 내보낸다.
+* 최신 공 HSV를 레거시 공 검출기가 읽는 ROS 파라미터 파일로 내보낸다.
 
 마우스
 ------
@@ -18,7 +18,7 @@ ROS 2 + RealSense HSV/Depth 보정 도구.
 
 키
 --
-* b / k / f / g / w: 공 / 검은 받침대 / 빨간 바닥 / hoop 빨강 / hoop 흰색
+* b / k / f   : 공 / 검은 받침대 / 빨간 바닥
 * SPACE       : 현재 ROI 표본을 선택 대상의 표본 모음에 추가한다.
 * a           : 표본 모음 또는 현재 ROI로 HSV 범위를 자동 계산한다.
 * d           : 계산된 현재 값으로 검출 미리보기를 켜거나 끈다.
@@ -26,7 +26,7 @@ ROS 2 + RealSense HSV/Depth 보정 도구.
 * n           : 현재 대상의 새 보정 작업을 시작한다.
                 (ROI와 표본은 지우고 슬라이더 값은 유지한다.)
 * x           : 현재 대상의 표본 모음만 지운다.
-* s           : 현재 공·hoop 프로필을 YAML로 저장한다.
+* s           : 현재 공·받침대·바닥 프로필을 YAML로 저장한다.
 * l           : YAML 프로필을 다시 읽는다.
 * i           : 컬러·깊이 화면을 저장하고 CSV 행을 추가한다.
 * q / ESC     : 종료한다.
@@ -122,7 +122,7 @@ BALL_PREVIEW_DEPTH_INNER_RADIUS_RATIO = 0.50
 BALL_PREVIEW_DEPTH_MIN_VALID_PIXELS = 8
 BALL_PREVIEW_DEPTH_MIN_VALID_RATIO = 0.15
 
-TARGETS = ("ball", "support", "floor", "hoop_red", "hoop_white")
+TARGETS = ("ball", "support", "floor")
 
 MAIN_WINDOW = "Calibration"
 MASK_WINDOW = "Masks"
@@ -268,60 +268,7 @@ def default_profile(target: str) -> Dict[str, Any]:
                 "v_high": 255,
             }
         )
-    elif target == "hoop_red":
-        common.update(
-            {
-                "h_low": 160,
-                "h_high": 10,
-                "s_low": 80,
-                "s_high": 255,
-                "v_low": 60,
-                "v_high": 255,
-                "min_area": 250,
-            }
-        )
-    elif target == "hoop_white":
-        # 흰색은 Hue가 의미 없으므로 실제 검출에서는 S 상한과 V 하한만 쓴다.
-        common.update(
-            {
-                "h_low": 0,
-                "h_high": 179,
-                "s_low": 0,
-                "s_high": 80,
-                "v_low": 80,
-                "v_high": 255,
-                "min_area": 250,
-            }
-        )
     return common
-
-
-def hoop_ros_parameters(
-    red_profile: Dict[str, Any],
-    white_profile: Dict[str, Any],
-) -> Dict[str, int]:
-    """순환 빨강·흰색 프로필을 hoop_vision 파라미터로 변환한다."""
-    red_h_low = clamp_int(red_profile["h_low"], 0, 179)
-    red_h_high = clamp_int(red_profile["h_high"], 0, 179)
-    if red_h_low > red_h_high:
-        red_h1_low, red_h1_high = 0, red_h_high
-        red_h2_low, red_h2_high = red_h_low, 179
-    else:
-        # 검출기는 Hue 구간 두 개를 받는다. 순환하지 않는 구간은 그대로
-        # 복제해 두 번째 구간 때문에 관계없는 색이 열리지 않게 한다.
-        red_h1_low, red_h1_high = red_h_low, red_h_high
-        red_h2_low, red_h2_high = red_h_low, red_h_high
-
-    return {
-        "red_h1_low": red_h1_low,
-        "red_h1_high": red_h1_high,
-        "red_h2_low": red_h2_low,
-        "red_h2_high": red_h2_high,
-        "red_s_low": clamp_int(red_profile["s_low"], 0, 255),
-        "red_v_low": clamp_int(red_profile["v_low"], 0, 255),
-        "white_s_high": clamp_int(white_profile["s_high"], 0, 255),
-        "white_v_low": clamp_int(white_profile["v_low"], 0, 255),
-    }
 
 
 def default_detector_settings() -> Dict[str, Any]:
@@ -350,7 +297,7 @@ def default_store() -> Dict[str, Any]:
         "detector": default_detector_settings(),
         "metadata": {
             "note": (
-                "공, 받침대, 바닥, hoop 빨강과 hoop 흰색 프로필을 분리한다. "
+                "공, 받침대, 바닥 프로필을 분리한다. "
                 "현재 경기장에서 보정한다."
             ),
         },
@@ -391,10 +338,9 @@ class ProfileStore:
                 base.update(loaded)
             profiles[target] = base
 
-        # 이전 단일 hoop 프로필은 테두리와 내부 중 무엇인지 구분할 수 없고
-        # 실제 검출에도 연결되지 않았다. 자동 백업에만 남기고 새 저장본은
-        # 빨강과 흰색 대상을 명확히 분리한다.
         profiles.pop("hoop", None)
+        profiles.pop("hoop_red", None)
+        profiles.pop("hoop_white", None)
 
         detector = default_detector_settings()
         loaded_detector = self.data.get("detector", {})
@@ -474,17 +420,6 @@ class HSVCalibratorNode(Node):
             ),
         )
         self.declare_parameter(
-            "hoop_params_file",
-            str(
-                Path.home()
-                / "irc"
-                / "src"
-                / "vision"
-                / "config"
-                / "hoop_hsv.yaml"
-            ),
-        )
-        self.declare_parameter(
             "output_dir",
             str(Path.home() / ".ros" / "vision" / "calibration"),
         )
@@ -502,9 +437,6 @@ class HSVCalibratorNode(Node):
         ).expanduser()
         self.ball_params_path = Path(
             str(self.get_parameter("ball_params_file").value)
-        ).expanduser()
-        self.hoop_params_path = Path(
-            str(self.get_parameter("hoop_params_file").value)
         ).expanduser()
         self.output_dir = Path(
             str(self.get_parameter("output_dir").value)
@@ -1030,22 +962,6 @@ class HSVCalibratorNode(Node):
                 0,
                 255,
             )
-        elif key == "hoop_white":
-            # 흰색은 Hue 정보가 의미 없으므로 실제 검출에서 사용할 채도 상한과
-            # 밝기 하한만 계산한다.
-            h_low, h_high = 0, 179
-            s_low = 0
-            s_high = clamp_int(
-                np.percentile(s, SV_HIGH_PERCENTILE) + S_HIGH_MARGIN,
-                0,
-                255,
-            )
-            v_low = clamp_int(
-                np.percentile(v, SV_LOW_PERCENTILE) - V_LOW_MARGIN,
-                0,
-                255,
-            )
-            v_high = 255
         else:
             hue_valid = h[(s > 10) & (v > 10)]
             if hue_valid.size < 20:
@@ -1071,7 +987,7 @@ class HSVCalibratorNode(Node):
             # 제외되지 않도록 한다.
             v_high = (
                 255
-                if key in {"ball", "hoop_red"}
+                if key == "ball"
                 else clamp_int(
                     np.percentile(v, SV_HIGH_PERCENTILE) + V_HIGH_MARGIN,
                     0,
@@ -1095,11 +1011,6 @@ class HSVCalibratorNode(Node):
             self.get_logger().info(
                 f"Auto-fit support: black V <= {v_high} "
                 f"(p{SUPPORT_V_PERCENTILE:.0f} + {SUPPORT_V_MARGIN})"
-            )
-        elif key == "hoop_white":
-            self.get_logger().info(
-                "Auto-fit hoop_white: "
-                f"H ignored, S<= {s_high}, V>= {v_low}"
             )
         else:
             wrap_text = " (wraps through 0)" if h_low > h_high else ""
@@ -1825,7 +1736,7 @@ class HSVCalibratorNode(Node):
             (
                 "12  Ball circ %",
                 int(round(profile["ball_circularity_min"] * 100)),
-                "minimum roundness; ignored for hoop",
+                "minimum roundness for the ball",
             ),
         ]
 
@@ -1857,7 +1768,7 @@ class HSVCalibratorNode(Node):
         note_y = start_y + len(rows) * line_h + 10
         cv2.putText(
             panel,
-            "Targets: B ball | K support | F floor | G hoop red | W hoop white",
+            "Targets: B ball | K support | F floor",
             (18, note_y),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.43,
@@ -1965,7 +1876,7 @@ class HSVCalibratorNode(Node):
                 f"dark {metrics['underexposed_pct']:.1f}%  "
                 f"clip {metrics['overexposed_pct']:.1f}%"
             ),
-            "B ball | K support | F floor | G hoop red | W hoop white",
+            "B ball | K support | F floor",
             "SPACE sample | A fit | D preview | R restore | S save",
         ]
         self._draw_text_panel(
@@ -2093,7 +2004,6 @@ class HSVCalibratorNode(Node):
             self.store.save()
             self.get_logger().info(f"Saved profiles -> {self.profile_path}")
             self._save_ball_ros_params()
-            self._save_hoop_ros_params()
         except OSError as exc:
             self.get_logger().error(f"Could not save profiles: {exc}")
 
@@ -2183,35 +2093,6 @@ class HSVCalibratorNode(Node):
         self.get_logger().info(
             "Exported ball/support/floor detector calibration -> "
             f"{self.ball_params_path}"
-        )
-
-    def _save_hoop_ros_params(self) -> None:
-        """보정한 빨간 테두리와 흰 내부 HSV 값을 실제 검출용으로 내보낸다."""
-        values = hoop_ros_parameters(
-            self.store.get("hoop_red"),
-            self.store.get("hoop_white"),
-        )
-        payload = {
-            "hoop_vision": {
-                "ros__parameters": values,
-            }
-        }
-        self.hoop_params_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = self.hoop_params_path.with_suffix(
-            self.hoop_params_path.suffix + ".tmp"
-        )
-        with temp_path.open("w", encoding="utf-8") as file:
-            yaml.safe_dump(
-                payload,
-                file,
-                sort_keys=False,
-                allow_unicode=True,
-                default_flow_style=False,
-            )
-        temp_path.replace(self.hoop_params_path)
-        self.get_logger().info(
-            "Exported hoop red/white detector calibration -> "
-            f"{self.hoop_params_path}"
         )
 
     def _reload_profiles(self) -> None:
@@ -2401,10 +2282,6 @@ class HSVCalibratorNode(Node):
             self._switch_target("support")
         elif key == ord("f"):
             self._switch_target("floor")
-        elif key == ord("g"):
-            self._switch_target("hoop_red")
-        elif key == ord("w"):
-            self._switch_target("hoop_white")
         elif key == ord("h"):
             self.get_logger().warning(
                 "IRC hurdle detection currently uses webcam YOLO, not "

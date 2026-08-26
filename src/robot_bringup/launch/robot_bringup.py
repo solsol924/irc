@@ -93,10 +93,10 @@ def generate_launch_description():
             'start_realsense': use_realsense,
             'start_webcam': use_webcam,
             'start_yolo': use_vision,
+            'start_realsense_yolo': use_vision,
             'start_ball': use_vision,
             'start_hurdle': use_vision,
             'start_monitor': use_vision,
-            'start_selector': use_vision,
             'webcam_device': webcam_device,
         }.items(),
     )

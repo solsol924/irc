@@ -40,32 +40,6 @@ profiles:
     morph_size: 5
     min_area: 120
     ball_circularity_min: 0.45
-  hoop_red:
-    h_low: 174
-    h_high: 5
-    s_low: 149
-    s_high: 226
-    v_low: 107
-    v_high: 255
-    depth_min_mm: 100
-    depth_max_mm: 6000
-    blur_size: 3
-    morph_size: 5
-    min_area: 250
-    ball_circularity_min: 0.45
-  hoop_white:
-    h_low: 0
-    h_high: 179
-    s_low: 0
-    s_high: 23
-    v_low: 162
-    v_high: 255
-    depth_min_mm: 100
-    depth_max_mm: 6000
-    blur_size: 3
-    morph_size: 5
-    min_area: 250
-    ball_circularity_min: 0.45
 detector:
   support_diameter_m: 0.15
   support_black_ratio_min: 0.3

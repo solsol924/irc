@@ -103,6 +103,11 @@ class BallVisionFusionNode(Node):
             "realsense_camera_info_topic",
             "/camera/color/camera_info",
         )
+        self.declare_parameter("use_realsense_yolo", False)
+        self.declare_parameter(
+            "realsense_yolo_state_topic",
+            "/realsense_yolo/ball_state",
+        )
         self.declare_parameter("webcam_state_topic", "/line_tracker/state")
         self.declare_parameter("hoop_state_topic", "/hoop/vision_state")
         self.declare_parameter("active_topic", "/vision/ball_active")
@@ -298,6 +303,12 @@ class BallVisionFusionNode(Node):
         )
         self.realsense_camera_info_topic = str(
             self.get_parameter("realsense_camera_info_topic").value
+        )
+        self.use_realsense_yolo = bool(
+            self.get_parameter("use_realsense_yolo").value
+        )
+        self.realsense_yolo_state_topic = str(
+            self.get_parameter("realsense_yolo_state_topic").value
         )
         self.webcam_state_topic = str(
             self.get_parameter("webcam_state_topic").value
@@ -673,6 +684,18 @@ class BallVisionFusionNode(Node):
             self.cb_raw_ball_in_hand,
             10,
         )
+        self.sub_realsense_yolo_state = None
+        if self.use_realsense_yolo:
+            self.sub_realsense_yolo_state = self.create_subscription(
+                String,
+                self.realsense_yolo_state_topic,
+                self.cb_realsense_yolo_state,
+                10,
+            )
+            self.get_logger().info(
+                "RealSense ball source: YOLO "
+                f"{self.realsense_yolo_state_topic}"
+            )
 
         self.ball_status_publisher = BallStatusPublisher(
             self,
@@ -699,7 +722,12 @@ class BallVisionFusionNode(Node):
             self.publish_ball_features,
         )
 
-        self._start_ball_image_subscriptions()
+        if self.use_realsense_yolo:
+            self.get_logger().info(
+                "Legacy RealSense HSV/OpenCV ball detector disabled."
+            )
+        else:
+            self._start_ball_image_subscriptions()
 
         self.get_logger().info("BallVisionFusionNode started.")
         self.get_logger().info(
@@ -1103,6 +1131,46 @@ class BallVisionFusionNode(Node):
             "(latched ball_in_hand)"
         )
         return True
+
+    def cb_realsense_yolo_state(self, msg: String) -> None:
+        """Feed the dedicated RealSense YOLO result into existing decisions."""
+        if not getattr(self, "ball_detection_active", True):
+            return
+
+        try:
+            payload = json.loads(msg.data)
+        except (json.JSONDecodeError, TypeError):
+            self.get_logger().warn(
+                "Failed to parse /realsense_yolo/ball_state JSON"
+            )
+            return
+        if not isinstance(payload, dict):
+            return
+
+        state = self._empty_realsense_state()
+        state.update(payload)
+        detected = bool(state.get("realsense_ball_detected", False))
+        if detected:
+            try:
+                distance_cm = float(state["realsense_ball_distance_cm"])
+                angle_deg = float(state["realsense_ball_angle_error"])
+            except (KeyError, TypeError, ValueError):
+                detected = False
+            else:
+                detected = bool(
+                    math.isfinite(distance_cm)
+                    and distance_cm > 0.0
+                    and math.isfinite(angle_deg)
+                )
+
+        if not detected:
+            diagnostic = state.get("realsense_diagnostic")
+            state = self._empty_realsense_state()
+            if isinstance(diagnostic, dict):
+                state["realsense_diagnostic"] = diagnostic
+
+        self.latest_realsense = state
+        self.latest_realsense_time = time.monotonic()
 
     # =============================================================
     # 카메라 내부 파라미터

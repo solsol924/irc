@@ -31,19 +31,18 @@ if(BUILD_TESTING)
     test/test_detector_activation.py
   )
   ament_add_pytest_test(
-    test_realsense_debug_selector
-    test/test_realsense_debug_selector.py
+    test_realsense_yolo_detector
+    test/test_realsense_yolo_detector.py
   )
 endif()
 
 install(PROGRAMS
   scripts/yolo_detector.py
+  scripts/realsense_yolo_detector.py
   scripts/ball_vision_fusion.py
   scripts/realsense_rgb_stabilizer.py
   scripts/realsense_hsv_calibrator.py
   scripts/hurdle_vision_fusion.py
-  scripts/hoop_vision.py
-  scripts/realsense_debug_selector.py
   scripts/vision_status_monitor.py
   DESTINATION lib/${PROJECT_NAME}
 )
