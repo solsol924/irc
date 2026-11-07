@@ -1,0 +1,44 @@
+python3 - <<'PY'
+import rclpy
+import numpy as np
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+
+class DepthCheck(Node):
+    def __init__(self):
+        super().__init__('depth_check')
+        self.sub = self.create_subscription(
+            Image,
+            '/camera/camera/aligned_depth_to_color/image_raw',
+            self.cb,
+            10
+        )
+
+    def cb(self, msg):
+        if msg.encoding.upper() == '16UC1':
+            d = np.frombuffer(msg.data, dtype=np.uint16).reshape(msg.height, msg.width)
+        elif msg.encoding.upper() == '32FC1':
+            d = np.frombuffer(msg.data, dtype=np.float32).reshape(msg.height, msg.width)
+        else:
+            print("encoding:", msg.encoding)
+            rclpy.shutdown()
+            return
+
+        valid = d[d > 0]
+
+        print("shape:", d.shape)
+        print("total pixels:", d.size)
+        print("nonzero pixels:", valid.size)
+        print("zero pixels:", d.size - valid.size)
+
+        if valid.size:
+            print("min:", valid.min())
+            print("median:", np.median(valid))
+            print("max:", valid.max())
+
+        rclpy.shutdown()
+
+rclpy.init()
+node = DepthCheck()
+rclpy.spin(node)
+PY
