@@ -1,0 +1,18 @@
+yolo export \
+model=/home/rnd/Desktop/webcam_round5_best.pt \
+format=engine \
+imgsz=640 \
+batch=1 \
+device=0 \
+half=True \
+workspace=1
+
+
+yolo export \
+model=/home/rnd/Desktop/realsense_round4_best.pt \
+format=engine \
+imgsz=640 \
+batch=1 \
+device=0 \
+half=True \
+workspace=1
